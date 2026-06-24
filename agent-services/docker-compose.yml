@@ -1,0 +1,13 @@
+services:
+  journey-agents:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/agents  
+    container_name: journey-agents
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${AGENT_PORT}:8800"
