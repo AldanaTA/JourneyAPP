@@ -471,8 +471,8 @@ Field mapping rules:
 - "Range: None" should become "5" because the DB default is "5".
 - "Area: None" should become "0" because the DB default is "0".
 - "Duration: None" should become "Instantaneous" because the DB default is "Instantaneous".
-- "Empower:" maps to empower_effect. If it says "None", use null.
-- "LVL UP:" maps to lvl_up_effect. If it says "None", use null.
+- "Empower:" maps to empower_effect. If it says "None", use "None".
+- "LVL UP:" maps to lvl_up_effect. If it says "None", use "None".
 - Some source blocks mistakenly use a final "LVL:" line where they clearly mean "LVL UP:". If a second LVL-like field appears near the end after Empower, treat it as lvl_up_effect.
 - Preserve the Effect/Empower/LVL UP wording as much as possible.
 

@@ -18,3 +18,4 @@ COPY agents/ ./
 
 EXPOSE 8800
 
+CMD ["uvicorn", "agents.agent_endpoints:app", "--host", "0.0.0.0", "--port", "8800"]
