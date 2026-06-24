@@ -30,9 +30,9 @@ CREATE TABLE IF NOT EXISTS powers (
 
     --EFFECT--
     effect TEXT NOT NULL,
-    empower_effect TEXT,
-    lvl_up_effect TEXT,
-    
+    empower_effect TEXT DEFAULT 'None',
+    lvl_up_effect TEXT DEFAULT 'None',
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
