@@ -1,45 +1,11 @@
 """
 power_importer.py
 
-Updated supervised import agent for your `powers` Postgres table.
+Supervised import agent for the Journey `powers` Postgres table.
 
-This version is hardened for documents shaped like your sample files:
-
-Power Name
-LVL:
-Type:
-Cost:
-Material Components:
-Components:
-Range:
-Area:
-Duration:
-Effect:
-Empower:
-LVL UP:
-
-Major improvements:
-- Splits the document into power blocks before calling the model.
-- Ignores intro/rules text and headers like EP Powers / MP Powers.
-- Explicitly maps Components: V,O,S,D,C into database booleans.
-- Parses costs into hp_cost/mp_cost/ep_cost/tp_cost.
-- Flags variable costs like Cost: *MP 2TP as invalid.
-- Keeps alternate cast-time notes by placing them in the effect text.
-- Handles both "LVL UP:" and mistaken final "LVL:" lines as level-up text.
-
-Install:
-    pip install -r requirements.txt
-
-Environment:
-    OPENAI_API_KEY=your_api_key
-    DATABASE_URL=postgresql://user:password@localhost:5432/dbname
-    OPENAI_MODEL=gpt-4.1-mini
-
-Preview:
-    python power_import_agent_updated.py "./Powers(Journey 100).txt" --out import_preview.json
-
-Commit:
-    python power_import_agent_updated.py "./Powers(Journey 100).txt" --commit
+Reusable utilities such as file text extraction, text normalization, JSON writing,
+and character-count batching live in helpers.py so other import agents can share
+them.
 """
 
 from __future__ import annotations
@@ -55,6 +21,14 @@ from typing import Any, Literal
 from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+
+from agents.helpers import (
+    batch_by_char_count,
+    extract_text,
+    normalize_text,
+    run_threaded_batches,
+    write_json_file,
+)
 
 
 # ----------------------------
@@ -199,12 +173,6 @@ REQUIRED_POWER_LABELS = [
     "Duration:",
     "Effect:",
 ]
-
-
-def normalize_text(text: str) -> str:
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
 
 
 def is_possible_power_name(line: str) -> bool:
@@ -489,70 +457,6 @@ Put a block into invalid_powers when:
 
 
 # ----------------------------
-# File text extraction
-# ----------------------------
-
-def read_txt(path: Path) -> str:
-    return path.read_text(encoding="utf-8", errors="replace")
-
-
-def read_docx(path: Path) -> str:
-    try:
-        from docx import Document
-    except ImportError as exc:
-        raise RuntimeError("Missing dependency. Install with: pip install python-docx") from exc
-
-    doc = Document(path)
-    chunks: list[str] = []
-
-    for paragraph in doc.paragraphs:
-        text = paragraph.text.strip()
-        if text:
-            chunks.append(text)
-
-    # Also read tables, because powers may later be formatted as tables.
-    for table in doc.tables:
-        for row in table.rows:
-            cells = [cell.text.strip() for cell in row.cells]
-            cells = [cell for cell in cells if cell]
-            if cells:
-                chunks.append(" | ".join(cells))
-
-    return "\n".join(chunks)
-
-
-def read_pdf(path: Path) -> str:
-    try:
-        from pypdf import PdfReader
-    except ImportError as exc:
-        raise RuntimeError("Missing dependency. Install with: pip install pypdf") from exc
-
-    reader = PdfReader(str(path))
-    pages: list[str] = []
-
-    for i, page in enumerate(reader.pages, start=1):
-        page_text = page.extract_text() or ""
-        pages.append(f"\n--- PAGE {i} ---\n{page_text}")
-
-    return "\n".join(pages)
-
-
-def extract_text(path: Path) -> str:
-    suffix = path.suffix.lower()
-
-    if suffix == ".txt":
-        return read_txt(path)
-
-    if suffix == ".docx":
-        return read_docx(path)
-
-    if suffix == ".pdf":
-        return read_pdf(path)
-
-    raise ValueError(f"Unsupported file type: {suffix}. Use .txt, .docx, or .pdf.")
-
-
-# ----------------------------
 # Agent batching
 # ----------------------------
 
@@ -563,28 +467,6 @@ def make_block_batch_text(blocks: list[PowerBlock]) -> str:
         parts.append(f"--- POWER BLOCK {block.index}: {block.name} ---\n{block.text}")
 
     return "\n\n".join(parts)
-
-
-def batch_blocks(blocks: list[PowerBlock], max_chars: int) -> list[list[PowerBlock]]:
-    batches: list[list[PowerBlock]] = []
-    current: list[PowerBlock] = []
-    current_size = 0
-
-    for block in blocks:
-        block_size = len(block.text)
-
-        if current and current_size + block_size > max_chars:
-            batches.append(current)
-            current = []
-            current_size = 0
-
-        current.append(block)
-        current_size += block_size
-
-    if current:
-        batches.append(current)
-
-    return batches
 
 
 def extract_powers_batch_with_agent(blocks: list[PowerBlock], model: str) -> AgentImportResult:
@@ -638,6 +520,7 @@ def extract_powers_with_agent(
     raw_text: str,
     model: str,
     max_batch_chars: int,
+    max_workers: int = 4,
 ) -> tuple[AgentImportResult, dict[str, Any]]:
     all_blocks = split_power_blocks(raw_text)
     blocks_for_agent, pre_invalid = remove_invalid_blocks(all_blocks)
@@ -647,6 +530,7 @@ def extract_powers_with_agent(
         "pre_validation_invalid": len(pre_invalid),
         "sent_to_agent": len(blocks_for_agent),
         "batches": 0,
+        "thread_workers": 0,
     }
 
     if not all_blocks:
@@ -665,16 +549,25 @@ def extract_powers_with_agent(
             metadata,
         )
 
-    batches = batch_blocks(blocks_for_agent, max_chars=max_batch_chars)
+    batches = batch_by_char_count(
+        blocks_for_agent,
+        max_chars=max_batch_chars,
+        text_getter=lambda block: block.text,
+    )
     metadata["batches"] = len(batches)
+    metadata["thread_workers"] = min(max_workers, len(batches)) if batches else 0
 
     batch_results: list[AgentImportResult] = []
 
     if pre_invalid:
         batch_results.append(AgentImportResult(valid_powers=[], invalid_powers=pre_invalid))
 
-    for batch in batches:
-        batch_results.append(extract_powers_batch_with_agent(batch, model=model))
+    threaded_results = run_threaded_batches(
+        batches,
+        worker=lambda batch: extract_powers_batch_with_agent(batch, model=model),
+        max_workers=max_workers,
+    )
+    batch_results.extend(threaded_results)
 
     return merge_results(batch_results), metadata
 
@@ -690,10 +583,7 @@ def write_preview(result: AgentImportResult, metadata: dict[str, Any], output_pa
         "invalid_powers": [power.model_dump() for power in result.invalid_powers],
     }
 
-    output_path.write_text(
-        json.dumps(preview, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    write_json_file(preview, output_path)
 
 
 # ----------------------------
@@ -795,6 +685,12 @@ def main() -> None:
         help="Approximate max characters sent to the model per batch.",
     )
     parser.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Maximum number of power batches to process concurrently.",
+    )
+    parser.add_argument(
         "--commit",
         action="store_true",
         help="Insert valid powers into Postgres after preview generation.",
@@ -824,6 +720,7 @@ def main() -> None:
             raw_text,
             model=args.model,
             max_batch_chars=args.max_batch_chars,
+            max_workers=args.workers,
         )
     except ValidationError as exc:
         print("The agent returned JSON, but it failed local validation.")
@@ -837,6 +734,7 @@ def main() -> None:
     print(f"Pre-validation invalid:   {metadata['pre_validation_invalid']}")
     print(f"Sent to agent:            {metadata['sent_to_agent']}")
     print(f"Batches:                  {metadata['batches']}")
+    print(f"Thread workers:           {metadata['thread_workers']}")
     print(f"Valid powers:             {len(result.valid_powers)}")
     print(f"Invalid powers:           {len(result.invalid_powers)}")
     print(f"Preview file:             {output_path}")
