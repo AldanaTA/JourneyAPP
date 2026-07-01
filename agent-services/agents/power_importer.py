@@ -1,5 +1,5 @@
 """
-power_import_agent_updated.py
+power_importer.py
 
 Updated supervised import agent for your `powers` Postgres table.
 
