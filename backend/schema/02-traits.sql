@@ -2,12 +2,9 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TYPE trait_type AS ENUM ('Passive', 'Declared', 'Triggered');
-
 CREATE TABLE IF NOT EXISTS traits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), 
     trait_name TEXT NOT NULL,
-    trait_type trait_type NOT NULL,
     LVL INT NOT NULL,
     purchase_Cost INT NOT NULL,
     LVL_UP_Cost INT NOT NULL,
@@ -45,12 +42,16 @@ CREATE TYPE trait_category AS ENUM (
     'reaction_timing',
     'status_ailments',
     'environmental',
+    'passive',
+    'declared',
+    'triggered',
     'other'
 );
 CREATE TABLE trait_categories(
     trait_id UUID NOT NULL REFERENCES traits(id) ON DELETE CASCADE,
     category trait_category NOT NULL,
-
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     PRIMARY KEY (trait_id, category)
 );
 
