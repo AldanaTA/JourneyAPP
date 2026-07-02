@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from agents.helpers import (
+from helpers import (
     batch_by_char_count,
     extract_text,
     normalize_text,
