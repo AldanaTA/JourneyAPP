@@ -14,7 +14,7 @@ from agents.power_importer import (
     extract_text,
     insert_valid_powers,
 )
-from upload_helpers import (
+from helpers.upload_helpers import (
     cleanup_temp_file,
     save_upload_to_temp_file,
     validate_upload,

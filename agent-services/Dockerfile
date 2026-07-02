@@ -18,4 +18,4 @@ COPY app/ ./
 
 EXPOSE 8800
 
-CMD ["uvicorn", "app.agent_endpoints:app", "--host", "0.0.0.0", "--port", "8800"]
+CMD ["uvicorn", "agent_endpoints:app", "--host", "0.0.0.0", "--port", "8800"]

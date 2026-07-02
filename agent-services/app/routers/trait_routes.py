@@ -15,7 +15,7 @@ from agents.trait_importer import (
     insert_valid_traits,
 )
 
-from upload_helpers import (
+from helpers.upload_helpers import (
     cleanup_temp_file,
     save_upload_to_temp_file,
     validate_upload,
@@ -72,12 +72,6 @@ async def preview_trait_import(
         default=None,
         description="Optional OpenAI model override.",
     ),
-    workers: int | None = Query(
-        default=None,
-        ge=1,
-        le=16,
-        description="Optional worker count override. Defaults to hardware-based worker count.",
-    ),
     max_batch_chars: int = Query(
         default=12000,
         ge=4000,
@@ -126,7 +120,6 @@ async def preview_trait_import(
             raw_text=raw_text,
             model=selected_model,
             max_batch_chars=max_batch_chars,
-            workers=workers,
         )
 
         response_metadata = {
@@ -158,7 +151,7 @@ async def preview_trait_import(
                 detail="DATABASE_URL is missing on the server.",
             )
 
-        inserted_ids = await insert_valid_traits(
+        inserted_ids = insert_valid_traits(
             result=result,
             database_url=database_url,
         )
