@@ -13,10 +13,13 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Sequence, TypeVar, cast
 
+import math
+import os
+from pathlib import Path
+
 T = TypeVar("T")
 R = TypeVar("R")
-
-
+    
 def normalize_text(text: str) -> str:
     """Normalize line endings and collapse excessive blank lines."""
     text = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -165,3 +168,79 @@ def write_json_file(data: Any, output_path: Path | str) -> None:
         json.dumps(data, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
+
+# Worker count detection logic:
+def _get_cgroup_cpu_count() -> int | None:
+    """
+    Detect CPU limit inside Docker/Linux cgroups.
+    Returns None if no cgroup CPU limit is detected.
+    """
+
+    # cgroup v2
+    cpu_max_path = Path("/sys/fs/cgroup/cpu.max")
+    if cpu_max_path.exists():
+        try:
+            quota, period = cpu_max_path.read_text().strip().split()
+
+            if quota != "max":
+                quota_int = int(quota)
+                period_int = int(period)
+
+                if quota_int > 0 and period_int > 0:
+                    return max(1, math.floor(quota_int / period_int))
+        except Exception:
+            pass
+
+    # cgroup v1
+    quota_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+    period_path = Path("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+
+    if quota_path.exists() and period_path.exists():
+        try:
+            quota = int(quota_path.read_text().strip())
+            period = int(period_path.read_text().strip())
+
+            if quota > 0 and period > 0:
+                return max(1, math.floor(quota / period))
+        except Exception:
+            pass
+
+    return None
+
+
+def get_max_workers(
+    *,
+    task_type: str = "io",
+    min_workers: int = 2,
+    max_workers: int = 4,
+) -> int:
+    """
+    Automatically choose a safe worker count based on available CPU.
+
+    task_type:
+        "cpu" -> good for CPU-heavy work
+        "io"  -> good for file reading, API calls, uploads, DB inserts, etc.
+    """
+
+    # Manual override from .env/docker compose if needed
+    env_value = os.getenv("MAX_WORKERS")
+    if env_value:
+        try:
+            return max(1, int(env_value))
+        except ValueError:
+            pass
+
+    cpu_count = (
+        _get_cgroup_cpu_count()
+        or os.cpu_count()
+        or 1
+    )
+
+    if task_type == "cpu":
+        # Leave at least one CPU free when possible
+        workers = max(1, cpu_count - 1)
+    else:
+        # IO-bound work can use more threads than CPUs
+        workers = cpu_count * 4
+
+    return max(min_workers, min(workers, max_workers))

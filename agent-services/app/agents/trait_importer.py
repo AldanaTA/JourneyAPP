@@ -29,6 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from helpers.agent_helpers import (
     batch_by_char_count,
     extract_text,
+    get_max_workers,
     normalize_text,
     run_threaded_batches,
     write_json_file,
@@ -760,12 +761,12 @@ def merge_results(results: list[AgentTraitImportResult]) -> AgentTraitImportResu
 
 
 def dedupe_traits(result: AgentTraitImportResult) -> tuple[AgentTraitImportResult, int]:
-    seen: set[tuple[str, int]] = set()
+    seen: set[str] = set()
     unique_traits: list[TraitRow] = []
     duplicate_count = 0
 
     for trait in result.valid_traits:
-        key = (trait.trait_name.strip().lower(), trait.lvl)
+        key = trait.trait_name.strip().lower()
 
         if key in seen:
             duplicate_count += 1
@@ -787,7 +788,7 @@ def extract_traits_with_agent(
     raw_text: str,
     model: str,
     max_batch_chars: int,
-    max_workers: int = 4,
+    max_workers: int = get_max_workers(),
 ) -> tuple[AgentTraitImportResult, dict[str, Any]]:
     all_blocks = split_trait_blocks(raw_text)
     blocks_for_agent, pre_invalid = remove_invalid_blocks(all_blocks)
@@ -877,10 +878,10 @@ def write_preview(
 
 
 # ----------------------------
-# Database insert
+# Database upsert
 # ----------------------------
 
-INSERT_TRAIT_SQL = """
+UPSERT_TRAIT_SQL = """
 INSERT INTO traits (
     trait_name,
     lvl,
@@ -907,7 +908,27 @@ VALUES (
     %(trait_effect)s,
     %(lvl_up_effect)s
 )
+ON CONFLICT (trait_name_key)
+DO UPDATE SET
+    trait_name = EXCLUDED.trait_name,
+    lvl = EXCLUDED.lvl,
+    purchase_cost = EXCLUDED.purchase_cost,
+    lvl_up_cost = EXCLUDED.lvl_up_cost,
+    trait_desc = EXCLUDED.trait_desc,
+    trait_uses = EXCLUDED.trait_uses,
+    mp_cost = EXCLUDED.mp_cost,
+    ep_cost = EXCLUDED.ep_cost,
+    tp_cost = EXCLUDED.tp_cost,
+    trait_effect = EXCLUDED.trait_effect,
+    lvl_up_effect = EXCLUDED.lvl_up_effect,
+    updated_at = NOW()
 RETURNING id;
+"""
+
+
+DELETE_TRAIT_CATEGORIES_SQL = """
+DELETE FROM trait_categories
+WHERE trait_id = %(trait_id)s;
 """
 
 
@@ -942,7 +963,7 @@ def insert_valid_traits(
     except ImportError as exc:
         raise RuntimeError("Missing dependency. Install with: pip install psycopg[binary]") from exc
 
-    inserted_ids: list[str] = []
+    upserted_ids: list[str] = []
 
     with psycopg.connect(normalize_database_url(database_url)) as conn:
         with conn.cursor() as cur:
@@ -950,8 +971,14 @@ def insert_valid_traits(
                 trait_data = trait.model_dump(mode="json")
                 categories = trait_data.pop("categories", [])
 
-                cur.execute(INSERT_TRAIT_SQL, trait_data)
+                cur.execute(UPSERT_TRAIT_SQL, trait_data)
                 trait_id = cur.fetchone()[0]
+
+                # Replace old categories with the current imported categories.
+                cur.execute(
+                    DELETE_TRAIT_CATEGORIES_SQL,
+                    {"trait_id": trait_id},
+                )
 
                 for category in categories:
                     cur.execute(
@@ -962,11 +989,11 @@ def insert_valid_traits(
                         },
                     )
 
-                inserted_ids.append(str(trait_id))
+                upserted_ids.append(str(trait_id))
 
         conn.commit()
 
-    return inserted_ids
+    return upserted_ids
 
 
 # ----------------------------
@@ -1064,7 +1091,7 @@ def main() -> None:
         print()
         print("Committing valid traits to database...")
         inserted_ids = insert_valid_traits(result, database_url)
-        print(f"Inserted {len(inserted_ids)} traits.")
+        print(f"Upserted {len(inserted_ids)} traits.")
 
 
 if __name__ == "__main__":
