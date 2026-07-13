@@ -11,6 +11,7 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS powers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_id UUID NOT NULL REFERENCES content_sources(id) ON DELETE CASCADE,
 
     name TEXT NOT NULL,
 
