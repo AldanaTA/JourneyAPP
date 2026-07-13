@@ -1059,6 +1059,7 @@ def write_preview(
 
 UPSERT_POWER_SQL = """
 INSERT INTO powers (
+    source_id,
     name,
     lvl,
     type,
@@ -1080,6 +1081,7 @@ INSERT INTO powers (
     lvl_up_effect
 )
 VALUES (
+    %(source_id)s,
     %(name)s,
     %(lvl)s,
     %(type)s,
@@ -1154,7 +1156,7 @@ def normalize_database_url(database_url: str) -> str:
     )
 
 
-def insert_valid_powers(result: AgentImportResult, database_url: str) -> list[str]:
+def insert_valid_powers(result: AgentImportResult, database_url: str, source_id: str) -> list[str]:
     try:
         import psycopg
     except ImportError as exc:
@@ -1168,7 +1170,7 @@ def insert_valid_powers(result: AgentImportResult, database_url: str) -> list[st
                 power_data = power.model_dump(mode="json")
                 categories = power_data.pop("categories", [])
 
-                cur.execute(UPSERT_POWER_SQL, power_data)
+                cur.execute(UPSERT_POWER_SQL, {"source_id": source_id, **power_data})
                 power_id = cur.fetchone()[0]
 
                 # Replace old categories with the current import result.
@@ -1191,106 +1193,3 @@ def insert_valid_powers(result: AgentImportResult, database_url: str) -> list[st
         conn.commit()
 
     return upserted_ids
-
-
-# ----------------------------
-# Main CLI
-# ----------------------------
-
-def main() -> None:
-    load_dotenv()
-
-    parser = argparse.ArgumentParser(
-        description="Import powers from a TXT, DOCX, or PDF file into a reviewable JSON preview."
-    )
-    parser.add_argument("file", help="Path to .txt, .docx, or .pdf file.")
-    parser.add_argument(
-        "--model",
-        default=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-        help="OpenAI model to use. Can also be set with OPENAI_MODEL.",
-    )
-    parser.add_argument(
-        "--out",
-        default="power_import_preview.json",
-        help="Where to save the reviewable JSON preview.",
-    )
-    parser.add_argument(
-        "--max-batch-chars",
-        type=int,
-        default=24000,
-        help="Approximate max characters sent to the model per batch.",
-    )
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=4,
-        help="Maximum number of power batches to process concurrently.",
-    )
-    parser.add_argument(
-        "--commit",
-        action="store_true",
-        help="Upsert valid powers into Postgres after preview generation.",
-    )
-
-    args = parser.parse_args()
-
-    source_path = Path(args.file)
-    output_path = Path(args.out)
-
-    if not source_path.exists():
-        raise FileNotFoundError(source_path)
-
-    if not os.getenv("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is missing. Put it in your environment or .env file.")
-
-    print(f"Reading: {source_path}")
-    raw_text = extract_text(source_path)
-
-    if not raw_text.strip():
-        raise RuntimeError("No text was extracted from the file.")
-
-    print("Splitting document into power blocks and extracting with agent...")
-
-    try:
-        result, metadata = extract_powers_with_agent(
-            raw_text,
-            model=args.model,
-            max_batch_chars=args.max_batch_chars,
-            max_workers=args.workers,
-        )
-    except ValidationError as exc:
-        print("The agent returned JSON, but it failed local validation.")
-        raise exc
-
-    write_preview(result, metadata, output_path)
-
-    print()
-    print("Import preview created.")
-    print(f"Power blocks found:       {metadata['power_blocks_found']}")
-    print(f"Pre-validation invalid:   {metadata['pre_validation_invalid']}")
-    print(f"Sent to agent:            {metadata['sent_to_agent']}")
-    print(f"Batches:                  {metadata['batches']}")
-    print(f"Thread workers:           {metadata['thread_workers']}")
-    print(f"Duplicate powers skipped: {metadata['duplicate_count']}")
-    print(f"Valid powers:             {len(result.valid_powers)}")
-    print(f"Invalid powers:           {len(result.invalid_powers)}")
-    print(f"Preview file:             {output_path}")
-
-    if result.invalid_powers:
-        print()
-        print("Invalid powers found. Review the preview before committing.")
-
-    if args.commit:
-        database_url = os.getenv("DATABASE_URL")
-
-        if not database_url:
-            raise RuntimeError("DATABASE_URL is missing. Required when using --commit.")
-
-        print()
-        print("Committing valid powers to database...")
-        upserted_ids = insert_valid_powers(result, database_url)
-        print(f"Upserted {len(upserted_ids)} powers.")
-
-
-if __name__ == "__main__":
-    main()

@@ -883,6 +883,7 @@ def write_preview(
 
 UPSERT_TRAIT_SQL = """
 INSERT INTO traits (
+    source_id,
     trait_name,
     lvl,
     purchase_cost,
@@ -896,6 +897,7 @@ INSERT INTO traits (
     lvl_up_effect
 )
 VALUES (
+    %(source_id)s,
     %(trait_name)s,
     %(lvl)s,
     %(purchase_cost)s,
@@ -957,6 +959,7 @@ def normalize_database_url(database_url: str) -> str:
 def insert_valid_traits(
     result: AgentTraitImportResult,
     database_url: str,
+    source_id: str
 ) -> list[str]:
     try:
         import psycopg
@@ -971,7 +974,7 @@ def insert_valid_traits(
                 trait_data = trait.model_dump(mode="json")
                 categories = trait_data.pop("categories", [])
 
-                cur.execute(UPSERT_TRAIT_SQL, trait_data)
+                cur.execute(UPSERT_TRAIT_SQL, {"source_id": source_id, **trait_data})
                 trait_id = cur.fetchone()[0]
 
                 # Replace old categories with the current imported categories.
@@ -994,105 +997,3 @@ def insert_valid_traits(
         conn.commit()
 
     return upserted_ids
-
-
-# ----------------------------
-# Main CLI
-# ----------------------------
-
-def main() -> None:
-    load_dotenv()
-
-    parser = argparse.ArgumentParser(
-        description="Import traits from a TXT, DOCX, or PDF file into a reviewable JSON preview."
-    )
-    parser.add_argument("file", help="Path to .txt, .docx, or .pdf file.")
-    parser.add_argument(
-        "--model",
-        default=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-        help="OpenAI model to use. Can also be set with OPENAI_MODEL.",
-    )
-    parser.add_argument(
-        "--out",
-        default="trait_import_preview.json",
-        help="Where to save the reviewable JSON preview.",
-    )
-    parser.add_argument(
-        "--max-batch-chars",
-        type=int,
-        default=12000,
-        help="Approximate max characters sent to the model per batch.",
-    )
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=4,
-        help="Maximum number of trait batches to process concurrently.",
-    )
-    parser.add_argument(
-        "--commit",
-        action="store_true",
-        help="Insert valid traits into Postgres after preview generation.",
-    )
-
-    args = parser.parse_args()
-
-    source_path = Path(args.file)
-    output_path = Path(args.out)
-
-    if not source_path.exists():
-        raise FileNotFoundError(source_path)
-
-    if not os.getenv("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is missing. Put it in your environment or .env file.")
-
-    print(f"Reading: {source_path}")
-    raw_text = extract_text(source_path)
-
-    if not raw_text.strip():
-        raise RuntimeError("No text was extracted from the file.")
-
-    print("Splitting document into trait blocks and extracting with agent...")
-
-    try:
-        result, metadata = extract_traits_with_agent(
-            raw_text,
-            model=args.model,
-            max_batch_chars=args.max_batch_chars,
-            max_workers=args.workers,
-        )
-    except ValidationError as exc:
-        print("The agent returned JSON, but it failed local validation.")
-        raise exc
-
-    write_preview(result, metadata, output_path)
-
-    print()
-    print("Import preview created.")
-    print(f"Trait blocks found:       {metadata['trait_blocks_found']}")
-    print(f"Pre-validation invalid:   {metadata['pre_validation_invalid']}")
-    print(f"Sent to agent:            {metadata['sent_to_agent']}")
-    print(f"Batches:                  {metadata['batches']}")
-    print(f"Thread workers:           {metadata['thread_workers']}")
-    print(f"Duplicate traits skipped: {metadata['duplicate_count']}")
-    print(f"Valid traits:             {len(result.valid_traits)}")
-    print(f"Invalid traits:           {len(result.invalid_traits)}")
-    print(f"Preview file:             {output_path}")
-
-    if result.invalid_traits:
-        print()
-        print("Invalid traits found. Review the preview before committing.")
-
-    if args.commit:
-        database_url = os.getenv("DATABASE_URL")
-        if not database_url:
-            raise RuntimeError("DATABASE_URL is missing. Required when using --commit.")
-
-        print()
-        print("Committing valid traits to database...")
-        inserted_ids = insert_valid_traits(result, database_url)
-        print(f"Upserted {len(inserted_ids)} traits.")
-
-
-if __name__ == "__main__":
-    main()

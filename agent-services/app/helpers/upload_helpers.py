@@ -66,7 +66,28 @@ async def save_upload_to_temp_file(
     except Exception:
         shutil.rmtree(temp_dir, ignore_errors=True)
         raise
+def check_source_exists(source_id: str, database_url: str) -> None:
+    import psycopg
 
-
+    try:
+        conn = psycopg.connect(database_url)
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM content_sources WHERE id = %s", (source_id,))
+        if cursor.fetchone() is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Content source with ID {source_id} does not exist.",
+            )
+    except psycopg.Error as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error: {e}",
+        )
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+            
 def cleanup_temp_file(temp_path: Path) -> None:
     shutil.rmtree(temp_path.parent, ignore_errors=True)

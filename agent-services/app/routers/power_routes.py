@@ -15,6 +15,7 @@ from agents.power_importer import (
     insert_valid_powers,
 )
 from helpers.upload_helpers import (
+    check_source_exists,
     cleanup_temp_file,
     save_upload_to_temp_file,
     validate_upload,
@@ -71,12 +72,30 @@ async def preview_power_import(
         le=100000,
         description="Approximate max characters sent to the model per batch.",
     ),
-) -> PowerImportResponse:
+    source_id: str = Query(
+        default=None,
+        description="Content source ID to associate with the imported powers.",
+    )) -> PowerImportResponse:
     if not os.getenv("OPENAI_API_KEY"):
         raise HTTPException(
             status_code=500,
             detail="OPENAI_API_KEY is missing on the server.",
         )
+    database_url = os.getenv("DATABASE_URL")
+
+    if not database_url:
+            raise HTTPException(
+                status_code=500,
+                detail="DATABASE_URL is missing on the server.",
+            )
+
+    if source_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="source_id query parameter is required.",
+        )
+    
+    check_source_exists(source_id, database_url)
 
     suffix = validate_upload(file)
     temp_path = await save_upload_to_temp_file(
@@ -114,15 +133,7 @@ async def preview_power_import(
                 ),
             )
 
-        database_url = os.getenv("DATABASE_URL")
-
-        if not database_url:
-            raise HTTPException(
-                status_code=500,
-                detail="DATABASE_URL is missing on the server.",
-            )
-
-        inserted_ids = insert_valid_powers(result, database_url)
+        inserted_ids = insert_valid_powers(result, database_url, source_id)
 
         return serialize_power_result(
             result=result,
