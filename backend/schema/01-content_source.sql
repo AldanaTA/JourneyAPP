@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS content_sources (
 INSERT INTO content_sources (source_name, source_desc)
 VALUES
     ('Core', 'The core content source for the game.'),
-    ('Calthora', 'The Calthora content source for the game.'),
+    ('Calthora', 'The Calthora content source for the game.')
 ON CONFLICT (source_name) DO NOTHING;
 
 COMMIT;
