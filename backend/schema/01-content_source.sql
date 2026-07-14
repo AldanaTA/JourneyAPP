@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS content_sources (
     CONSTRAINT uq_content_sources_source_name UNIQUE (source_name)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_content_sources_source_name ON content_sources (source_name);
 INSERT INTO content_sources (source_name, source_desc)
 VALUES
     ('Core', 'The core content source for the game.'),
