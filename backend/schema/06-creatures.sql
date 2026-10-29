@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS creatures(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     source_id UUID NOT NULL REFERENCES content_sources(id) ON DELETE CASCADE,
     creature_category_id UUID NOT NULL REFERENCES creature_categories(id) ON DELETE SET NULL,
+    creature_threat_lvl INT NOT NULL,
     name TEXT NOT NULL,
     details JSONB DEFAULT '{"schema_version": "1.0", "type": "creature", "content": {}}'::JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

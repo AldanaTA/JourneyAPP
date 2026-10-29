@@ -12,7 +12,7 @@ services:
     ports:
       - "${AGENT_PORT}:8800"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://192.168.40.105:8000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8800/health || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 10  
