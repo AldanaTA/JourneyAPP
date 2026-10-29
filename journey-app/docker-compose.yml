@@ -5,6 +5,13 @@ services:
       dockerfile: Dockerfile
     container_name: journey-api
     restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_URL: ${DB_URL:-jdbc:postgresql://localhost:1090/journey}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      AGENT_SERVICE_URL: ${AGENT_SERVICE_URL:-http://localhost:8800}
     ports:
       - "8080:8080"
     healthcheck:
