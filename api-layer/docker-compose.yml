@@ -1,9 +1,0 @@
-services:
-  api-layer:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: journey-api-layer
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
