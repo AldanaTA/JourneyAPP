@@ -91,4 +91,9 @@ public class PowerServiceImpl implements PowerService {
         return powerRepository.findByName(name).orElse(null);
     }
 
+    @Override
+    public List<Power> getAllPowers() {
+        return powerRepository.findAll();
+    }
+
 }
