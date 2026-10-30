@@ -1,5 +1,5 @@
-package com.journey.api_rest_v1.domain.content;
-import com.journey.api_rest_v1.domain.powers.Powers;
+package com.journey.api_rest_v1.domain.content_source;
+import com.journey.api_rest_v1.domain.powers.Power;
 
 import java.time.OffsetDateTime;
 import org.hibernate.annotations.CreationTimestamp;
@@ -28,7 +28,7 @@ public class ContentSource {
     private String source_desc;
 
     @OneToMany(mappedBy = "source")
-    private java.util.List<Powers> powers;
+    private java.util.List<Power> powers;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

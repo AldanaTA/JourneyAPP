@@ -1,12 +1,12 @@
 package com.journey.api_rest_v1.domain.powers;
-import com.journey.api_rest_v1.domain.content.ContentSource;
-
 import java.time.OffsetDateTime;
 import java.util.List;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
+
+import com.journey.api_rest_v1.domain.content_source.ContentSource;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,7 +22,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "powers") 
-public class Powers {
+public class Power{
     @Id
     @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
     @Column (name = "id", nullable = false, updatable = false)

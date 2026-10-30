@@ -25,7 +25,7 @@ public class PowerCategories {
     @MapsId("powerId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "power_id", nullable = false)
-    private Powers power;
+    private Power power;
 
     @Column(name = "category", nullable = false, insertable = false, updatable = false)
     @Convert(converter = PowerCategoryConverter.class)
