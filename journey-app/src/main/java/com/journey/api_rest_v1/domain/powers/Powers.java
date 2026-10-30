@@ -1,4 +1,5 @@
-package com.journey.api_rest_v1.domain.entity;
+package com.journey.api_rest_v1.domain.powers;
+import com.journey.api_rest_v1.domain.content.ContentSource;
 
 import java.time.OffsetDateTime;
 import java.util.List;

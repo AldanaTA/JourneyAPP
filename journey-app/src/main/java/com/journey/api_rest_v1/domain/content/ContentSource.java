@@ -1,7 +1,7 @@
-package com.journey.api_rest_v1.domain.entity;
+package com.journey.api_rest_v1.domain.content;
+import com.journey.api_rest_v1.domain.powers.Powers;
 
 import java.time.OffsetDateTime;
-
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;

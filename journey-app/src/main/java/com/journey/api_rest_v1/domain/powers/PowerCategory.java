@@ -1,4 +1,4 @@
-package com.journey.api_rest_v1.domain.entity;
+package com.journey.api_rest_v1.domain.powers;
 
 public enum PowerCategory {
     DAMAGE,
