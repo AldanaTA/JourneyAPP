@@ -52,7 +52,7 @@ BEGIN
             'crafting_items',
             'stealth_deception',
             'social_roleplay',
-            'status_ailments',
+            'status_conditions',
             'environmental',
             'passive',
             'declared',

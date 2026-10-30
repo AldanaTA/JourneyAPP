@@ -58,7 +58,7 @@ class TraitCategory(str, Enum):
     crafting_items = "crafting_items"
     stealth_deception = "stealth_deception"
     social_roleplay = "social_roleplay"
-    status_ailments = "status_ailments"
+    status_conditions = "status_conditions"
     environmental = "environmental"
     passive = "passive"
     declared = "declared"
@@ -394,7 +394,7 @@ SEMANTIC_CATEGORIES = {
     TraitCategory.crafting_items,
     TraitCategory.stealth_deception,
     TraitCategory.social_roleplay,
-    TraitCategory.status_ailments,
+    TraitCategory.status_conditions,
     TraitCategory.environmental,
     TraitCategory.other,
 }
@@ -624,7 +624,7 @@ Use 1 to 3 semantic categories:
 - crafting_items: mainly creates, improves, repairs, identifies, stores, enhances, or uses items, potions, tools, materials, or crafted objects.
 - stealth_deception: mainly helps hiding, sneaking, disguise, misdirection, lying, infiltration, or avoiding detection.
 - social_roleplay: mainly helps persuasion, intimidation, interrogation, charm, reputation, language, social scenes, or roleplay interaction.
-- status_ailments: mainly applies, removes, resists, modifies, or interacts with named status ailments.
+- status_conditions: mainly applies, removes, resists, modifies, or interacts with named status conditions.
 - environmental: mainly creates, changes, resists, or exploits terrain, weather, darkness, light, hazards, areas, or environmental conditions.
 - other: only use when no other semantic category fits.
 
