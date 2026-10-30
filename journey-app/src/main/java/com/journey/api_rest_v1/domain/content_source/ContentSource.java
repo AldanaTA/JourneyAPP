@@ -2,6 +2,8 @@ package com.journey.api_rest_v1.domain.content_source;
 import com.journey.api_rest_v1.domain.powers.Power;
 
 import java.time.OffsetDateTime;
+import java.util.List;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
@@ -37,4 +39,17 @@ public class ContentSource {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    public ContentSource(String id, String source_name, String source_desc, List<Power> powers,
+            OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+        this.id = id;
+        this.source_name = source_name;
+        this.source_desc = source_desc;
+        this.powers = powers;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public ContentSource() {
+    }
 }

@@ -38,4 +38,56 @@ public class PowerCategories {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    public PowerCategories(PowerCategoriesId id, Power power, PowerCategory category, OffsetDateTime createdAt,
+            OffsetDateTime updatedAt) {
+        this.id = id;
+        this.power = power;
+        this.category = category;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public PowerCategories() {
+    }
+
+    public PowerCategoriesId getId() {
+        return id;
+    }
+
+    public void setId(PowerCategoriesId id) {
+        this.id = id;
+    }
+
+    public Power getPower() {
+        return power;
+    }
+
+    public void setPower(Power power) {
+        this.power = power;
+    }
+
+    public PowerCategory getCategory() {
+        return category;
+    }
+
+    public void setCategory(PowerCategory category) {
+        this.category = category;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }
