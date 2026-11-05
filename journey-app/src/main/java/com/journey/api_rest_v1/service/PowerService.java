@@ -2,7 +2,7 @@ package com.journey.api_rest_v1.service;
 
 import com.journey.api_rest_v1.domain.powers.Power;
 import com.journey.api_rest_v1.domain.powers.PowerCategory;
-import com.journey.api_rest_v1.api.dto.power.CreatePowerRequest;
+import com.journey.api_rest_v1.dto.power.CreatePowerRequest;
 
 import java.util.List;
 import org.springframework.data.domain.Page;

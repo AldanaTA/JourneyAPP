@@ -1,4 +1,4 @@
-package com.journey.api_rest_v1.api.dto.power;
+package com.journey.api_rest_v1.dto.power;
 
 import java.util.List;
 import com.journey.api_rest_v1.domain.powers.PowerType;

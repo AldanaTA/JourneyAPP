@@ -10,11 +10,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
-import com.journey.api_rest_v1.api.dto.power.CreatePowerRequest;
 import com.journey.api_rest_v1.domain.powers.Power;
 import com.journey.api_rest_v1.domain.powers.PowerCategories;
 import com.journey.api_rest_v1.domain.powers.PowerCategoriesId;
 import com.journey.api_rest_v1.domain.powers.PowerCategory;
+import com.journey.api_rest_v1.dto.power.CreatePowerRequest;
 import com.journey.api_rest_v1.repository.PowerCategoriesRepository;
 import com.journey.api_rest_v1.repository.PowerRepository;
 import com.journey.api_rest_v1.service.PowerService;
