@@ -10,11 +10,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import com.journey.api_rest_v1.domain.content_source.ContentSource;
 import com.journey.api_rest_v1.domain.powers.Power;
 import com.journey.api_rest_v1.domain.powers.PowerCategories;
 import com.journey.api_rest_v1.domain.powers.PowerCategoriesId;
 import com.journey.api_rest_v1.domain.powers.PowerCategory;
 import com.journey.api_rest_v1.dto.power.CreatePowerRequest;
+import com.journey.api_rest_v1.dto.power.PowerResponseDto;
+import com.journey.api_rest_v1.mapper.PowerMapper;
+import com.journey.api_rest_v1.repository.ContentSourceRepository;
 import com.journey.api_rest_v1.repository.PowerCategoriesRepository;
 import com.journey.api_rest_v1.repository.PowerRepository;
 import com.journey.api_rest_v1.service.PowerService;
@@ -24,16 +28,25 @@ public class PowerServiceImpl implements PowerService {
 
     private final PowerRepository powerRepository;
     private final PowerCategoriesRepository powerCategoriesRepository;
+    private final ContentSourceRepository contentSourceRepository;
+    private final PowerMapper powerMapper;
 
-    public PowerServiceImpl(PowerRepository powerRepository, PowerCategoriesRepository powerCategoriesRepository) {
+    public PowerServiceImpl(PowerRepository powerRepository,
+                           PowerCategoriesRepository powerCategoriesRepository,
+                           ContentSourceRepository contentSourceRepository,
+                           PowerMapper powerMapper) {
         this.powerRepository = powerRepository;
         this.powerCategoriesRepository = powerCategoriesRepository;
+        this.contentSourceRepository = contentSourceRepository;
+        this.powerMapper = powerMapper;
     }
 
     @Override
     @Transactional
-    public Power createPower(CreatePowerRequest request) {
+    public PowerResponseDto createPower(CreatePowerRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
+        ContentSource contentSource = contentSourceRepository.findById(request.content_source_id())
+                .orElseThrow(() -> new RuntimeException("Content source not found with id: " + request.content_source_id()));
 
         Power power = new Power(
                 null,
@@ -57,7 +70,7 @@ public class PowerServiceImpl implements PowerService {
                 request.empower_effect(),
                 request.lvl_up_effect(),
                 new java.util.ArrayList<>(),
-                request.content_source(),
+                contentSource,
                 now,
                 now
         );
@@ -83,16 +96,19 @@ public class PowerServiceImpl implements PowerService {
             powerCategoriesRepository.saveAll(powerCategories);
         }
 
-        return savedPower;
+        return powerMapper.CreateResponse(savedPower);
     }
 
     @Override
     @Transactional 
-    public Power updatePower(String id, CreatePowerRequest request) {
+    public PowerResponseDto updatePower(String id, CreatePowerRequest request) {
        OffsetDateTime now = OffsetDateTime.now();
 
         Power existingPower = powerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Power not found with id: " + id));
+
+        ContentSource contentSource = contentSourceRepository.findById(request.content_source_id())
+                .orElseThrow(() -> new RuntimeException("Content source not found with id: " + request.content_source_id()));
 
         existingPower.setName(request.name());
         existingPower.setLvl(request.lvl());
@@ -113,7 +129,7 @@ public class PowerServiceImpl implements PowerService {
         existingPower.setEffect(request.effect());
         existingPower.setEmpowerEffect(request.empower_effect());
         existingPower.setLvlUpEffect(request.lvl_up_effect());
-        existingPower.setSource(request.content_source());
+        existingPower.setSource(contentSource);
         existingPower.setUpdatedAt(now);
 
         // Update categories
@@ -139,7 +155,7 @@ public class PowerServiceImpl implements PowerService {
             existingPower.getCategories().addAll(updatedCategories);
         }
 
-        return powerRepository.save(existingPower);
+        return powerMapper.CreateResponse(powerRepository.save(existingPower));
     }
 
     @Override
@@ -157,33 +173,33 @@ public class PowerServiceImpl implements PowerService {
     }
 
     @Override
-    public Power getPowerById(String id) {
-        return powerRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Power not found with id: " + id));
+    public PowerResponseDto getPowerById(String id) {
+        return powerMapper.CreateResponse(powerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Power not found with id: " + id)));
     }
 
     @Override
-    public Power getPowerByName(String name) {
-        return powerRepository.findByName(name)
-                .orElseThrow(() -> new RuntimeException("Power not found with name: " + name));
+    public PowerResponseDto getPowerByName(String name) {
+        return powerMapper.CreateResponse(powerRepository.findByName(name)
+                .orElseThrow(() -> new RuntimeException("Power not found with name: " + name)));
     }
+
     @Override
-    public Page<Power> getAllPowers(int page, int size, String sortBy, String sortDir) {
+    public Page<PowerResponseDto> getAllPowers(int page, int size, String sortBy, String sortDir) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortBy));
-        return powerRepository.findAll(pageable);
+        return powerRepository.findAll(pageable).map(powerMapper::CreateResponse);
     }
 
     @Override
-    public Page<Power> getPowersByCategory(List<PowerCategory> categories, boolean matchAll, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    public Page<PowerResponseDto> getPowersByCategory(List<PowerCategory> categories, boolean matchAll, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name"));
         if (matchAll) {
-            return powerRepository.findPowersWithAllCategories(categories, categories.size(), pageable);
+            return powerRepository.findPowersWithAllCategories(categories, categories.size(), pageable)
+                    .map(powerMapper::CreateResponse);
         } else {
-            return powerRepository.findByCategories_CategoriesIn(categories, pageable);
+            return powerRepository.findByCategories_CategoriesIn(categories, pageable)
+                    .map(powerMapper::CreateResponse);
         }
     }
-
-
-
 
 }

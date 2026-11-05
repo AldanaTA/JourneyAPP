@@ -52,4 +52,52 @@ public class ContentSource {
 
     public ContentSource() {
     }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getSource_name() {
+        return source_name;
+    }
+
+    public void setSource_name(String source_name) {
+        this.source_name = source_name;
+    }
+
+    public String getSource_desc() {
+        return source_desc;
+    }
+
+    public void setSource_desc(String source_desc) {
+        this.source_desc = source_desc;
+    }
+
+    public java.util.List<Power> getPowers() {
+        return powers;
+    }
+
+    public void setPowers(java.util.List<Power> powers) {
+        this.powers = powers;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }
