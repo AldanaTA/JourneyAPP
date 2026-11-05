@@ -6,12 +6,15 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import com.journey.api_rest_v1.api.dto.power.CreatePowerRequest;
 import com.journey.api_rest_v1.domain.powers.Power;
 import com.journey.api_rest_v1.domain.powers.PowerCategories;
 import com.journey.api_rest_v1.domain.powers.PowerCategoriesId;
+import com.journey.api_rest_v1.domain.powers.PowerCategory;
 import com.journey.api_rest_v1.repository.PowerCategoriesRepository;
 import com.journey.api_rest_v1.repository.PowerRepository;
 import com.journey.api_rest_v1.service.PowerService;
@@ -165,8 +168,19 @@ public class PowerServiceImpl implements PowerService {
                 .orElseThrow(() -> new RuntimeException("Power not found with name: " + name));
     }
     @Override
-    public Page<Power> getAllPowers(Pageable pageable) {
+    public Page<Power> getAllPowers(int page, int size, String sortBy, String sortDir) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortBy));
         return powerRepository.findAll(pageable);
+    }
+
+    @Override
+    public Page<Power> getPowersByCategory(List<PowerCategory> categories, boolean matchAll, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        if (matchAll) {
+            return powerRepository.findPowersWithAllCategories(categories, categories.size(), pageable);
+        } else {
+            return powerRepository.findByCategories_CategoriesIn(categories, pageable);
+        }
     }
 
 
