@@ -5,6 +5,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.journey.api_rest_v1.api.dto.power.CreatePowerRequest;
 import com.journey.api_rest_v1.domain.powers.Power;
@@ -82,18 +84,92 @@ public class PowerServiceImpl implements PowerService {
     }
 
     @Override
+    @Transactional 
+    public Power updatePower(String id, CreatePowerRequest request) {
+       OffsetDateTime now = OffsetDateTime.now();
+
+        Power existingPower = powerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Power not found with id: " + id));
+
+        existingPower.setName(request.name());
+        existingPower.setLvl(request.lvl());
+        existingPower.setType(request.type());
+        existingPower.setTpCost(request.tp_cost());
+        existingPower.setHpCost(request.hp_cost());
+        existingPower.setMpCost(request.mp_cost());
+        existingPower.setEpCost(request.ep_cost());
+        existingPower.setMaterialComponents(request.material_components());
+        existingPower.setVerbal(request.verbal());
+        existingPower.setSight(request.sight());
+        existingPower.setSomatic(request.somatic());
+        existingPower.setIsDistinct(request.is_distinct());
+        existingPower.setConcentration(request.concentration());
+        existingPower.setRange(request.range());
+        existingPower.setArea(request.area());
+        existingPower.setDuration(request.duration());
+        existingPower.setEffect(request.effect());
+        existingPower.setEmpowerEffect(request.empower_effect());
+        existingPower.setLvlUpEffect(request.lvl_up_effect());
+        existingPower.setSource(request.content_source());
+        existingPower.setUpdatedAt(now);
+
+        // Update categories
+        List<PowerCategories> updatedCategories = request.categories() == null ? List.of()
+                : request.categories().stream()
+                        .map(category -> {
+                            PowerCategories link = new PowerCategories(
+                                    new PowerCategoriesId(existingPower.getId(), category),
+                                    existingPower,
+                                    category,
+                                    now,
+                                    now
+                            );
+                            return link;
+                        })
+                        .toList();
+
+        // Remove old categories and add new ones
+        powerCategoriesRepository.deleteAll(existingPower.getCategories());
+        if (!updatedCategories.isEmpty()) {
+            powerCategoriesRepository.saveAll(updatedCategories);
+            existingPower.getCategories().clear();
+            existingPower.getCategories().addAll(updatedCategories);
+        }
+
+        return powerRepository.save(existingPower);
+    }
+
+    @Override
+    public String deletePower(String id) {
+        Power existingPower = powerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Power not found with id: " + id));
+        String name = existingPower.getName();
+        // Delete associated categories first
+        powerCategoriesRepository.deleteAll(existingPower.getCategories());
+
+        // Then delete the power
+        powerRepository.delete(existingPower);
+
+        return "Power with id " + id + " (name: " + name + ") has been deleted.";
+    }
+
+    @Override
     public Power getPowerById(String id) {
-        return powerRepository.findById(id).orElse(null);
+        return powerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Power not found with id: " + id));
     }
 
     @Override
     public Power getPowerByName(String name) {
-        return powerRepository.findByName(name).orElse(null);
+        return powerRepository.findByName(name)
+                .orElseThrow(() -> new RuntimeException("Power not found with name: " + name));
+    }
+    @Override
+    public Page<Power> getAllPowers(Pageable pageable) {
+        return powerRepository.findAll(pageable);
     }
 
-    @Override
-    public List<Power> getAllPowers() {
-        return powerRepository.findAll();
-    }
+
+
 
 }

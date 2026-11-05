@@ -8,5 +8,4 @@ import com.journey.api_rest_v1.domain.powers.PowerCategoriesId;
 
 @Repository 
 public interface PowerCategoriesRepository extends JpaRepository<PowerCategories, PowerCategoriesId> {
-
 }
