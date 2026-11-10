@@ -2,6 +2,7 @@ package com.journey.api_rest_v1.service.impl;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +46,8 @@ public class PowerServiceImpl implements PowerService {
     @Transactional
     public PowerResponseDto createPower(CreatePowerRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
-        ContentSource contentSource = contentSourceRepository.findById(request.content_source_id())
+        UUID contentSourceId = UUID.fromString(request.content_source_id());
+        ContentSource contentSource = contentSourceRepository.findById(contentSourceId)
                 .orElseThrow(() -> new RuntimeException("Content source not found with id: " + request.content_source_id()));
 
         Power power = new Power(
@@ -103,11 +105,13 @@ public class PowerServiceImpl implements PowerService {
     @Transactional 
     public PowerResponseDto updatePower(String id, CreatePowerRequest request) {
        OffsetDateTime now = OffsetDateTime.now();
+       UUID powerId = UUID.fromString(id);
+       UUID contentSourceId = UUID.fromString(request.content_source_id());
 
-        Power existingPower = powerRepository.findById(id)
+        Power existingPower = powerRepository.findById(powerId)
                 .orElseThrow(() -> new RuntimeException("Power not found with id: " + id));
 
-        ContentSource contentSource = contentSourceRepository.findById(request.content_source_id())
+        ContentSource contentSource = contentSourceRepository.findById(contentSourceId)
                 .orElseThrow(() -> new RuntimeException("Content source not found with id: " + request.content_source_id()));
 
         existingPower.setName(request.name());
@@ -160,7 +164,8 @@ public class PowerServiceImpl implements PowerService {
 
     @Override
     public String deletePower(String id) {
-        Power existingPower = powerRepository.findById(id)
+        UUID powerId = UUID.fromString(id);
+        Power existingPower = powerRepository.findById(powerId)
                 .orElseThrow(() -> new RuntimeException("Power not found with id: " + id));
         String name = existingPower.getName();
         // Delete associated categories first
@@ -174,7 +179,8 @@ public class PowerServiceImpl implements PowerService {
 
     @Override
     public PowerResponseDto getPowerById(String id) {
-        return powerMapper.CreateResponse(powerRepository.findById(id)
+        UUID powerId = UUID.fromString(id);
+        return powerMapper.CreateResponse(powerRepository.findById(powerId)
                 .orElseThrow(() -> new RuntimeException("Power not found with id: " + id)));
     }
 
@@ -197,7 +203,7 @@ public class PowerServiceImpl implements PowerService {
             return powerRepository.findPowersWithAllCategories(categories, categories.size(), pageable)
                     .map(powerMapper::CreateResponse);
         } else {
-            return powerRepository.findByCategories_CategoriesIn(categories, pageable)
+            return powerRepository.findByCategories_CategoryIn(categories, pageable)
                     .map(powerMapper::CreateResponse);
         }
     }

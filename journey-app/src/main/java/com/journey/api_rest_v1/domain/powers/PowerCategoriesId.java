@@ -2,6 +2,7 @@ package com.journey.api_rest_v1.domain.powers;
 
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -10,8 +11,8 @@ import jakarta.persistence.Embeddable;
 @Embeddable
 public class PowerCategoriesId implements Serializable {
 
-    @Column(name = "power_id", nullable = false)
-    private String powerId;
+    @Column(name = "power_id", nullable = false, columnDefinition = "uuid")
+    private UUID powerId;
 
     @Convert(converter = PowerCategoryConverter.class)
     @Column(name = "category", nullable = false)
@@ -20,16 +21,16 @@ public class PowerCategoriesId implements Serializable {
     public PowerCategoriesId() {
     }
 
-    public PowerCategoriesId(String powerId, PowerCategory category) {
+    public PowerCategoriesId(UUID powerId, PowerCategory category) {
         this.powerId = powerId;
         this.category = category;
     }
 
-    public String getPowerId() {
+    public UUID getPowerId() {
         return powerId;
     }
 
-    public void setPowerId(String powerId) {
+    public void setPowerId(UUID powerId) {
         this.powerId = powerId;
     }
 

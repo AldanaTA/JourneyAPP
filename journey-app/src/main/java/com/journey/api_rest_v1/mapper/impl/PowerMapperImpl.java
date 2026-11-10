@@ -13,7 +13,7 @@ public class PowerMapperImpl implements PowerMapper {
 
     public PowerResponseDto CreateResponse(Power power) {
         return new PowerResponseDto(
-            power.getId(),
+            power.getId() == null ? null : power.getId().toString(),
             power.getName(),
             power.getLvl(),
             power.getType().name(),

@@ -6,7 +6,7 @@ services:
     volumes:
       - .:/agents  
     container_name: journey-agents
-    restart: on-failure:3
+    restart: unless-stopped
     env_file:
       - .env
     ports:

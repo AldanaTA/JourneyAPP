@@ -3,6 +3,7 @@ import com.journey.api_rest_v1.domain.powers.Power;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -15,13 +16,13 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "content_source")
+@Table(name = "content_sources")
 public class ContentSource {
 
     @Id
     @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
-    @Column (name = "id", nullable = false, updatable = false)
-    private String id;
+    @Column(name = "id", nullable = false, updatable = false, columnDefinition = "uuid")
+    private UUID id;
 
     @Column(name = "source_name", nullable = false)
     private String source_name;
@@ -40,7 +41,7 @@ public class ContentSource {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    public ContentSource(String id, String source_name, String source_desc, List<Power> powers,
+    public ContentSource(UUID id, String source_name, String source_desc, List<Power> powers,
             OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
         this.source_name = source_name;
@@ -53,11 +54,11 @@ public class ContentSource {
     public ContentSource() {
     }
 
-    public String getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
