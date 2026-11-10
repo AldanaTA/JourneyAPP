@@ -56,15 +56,10 @@ public class PowerController {
         return new ResponseEntity<>(powerService.getAllPowers(page, size, sortBy, sortDir), HttpStatus.OK);
     }
 
-    @GetMapping("/filter-by-category")
+    @PostMapping("/filter-by-category")
     public ResponseEntity<Iterable<PowerResponseDto>> getAllPowersByCategory(@Valid @RequestBody PowerFilterRequest request) {
         return new ResponseEntity<>(
-            powerService.getPowersByCategory(
-                request.categories(),
-                request.getMatchAll(),
-                request.getPage(),
-                request.getSize()
-            ),
+            powerService.filterPowers(request),
             HttpStatus.OK
         );
     }

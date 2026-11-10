@@ -4,13 +4,19 @@ import java.util.List;
 
 import com.journey.api_rest_v1.domain.powers.PowerCategory;
 
-import jakarta.validation.constraints.NotEmpty;
-
 public record PowerFilterRequest(
-    @NotEmpty(message = "categories must not be empty") List<PowerCategory> categories,
+    List<PowerCategory> categories,
     Boolean matchAll,
     Integer page,
-    Integer size
+    Integer size,
+    Integer tpCost,
+    String tpOperator,
+    Integer hpCost,
+    String hpOperator,
+    Integer mpCost,
+    String mpOperator,
+    Integer epCost,
+    String epOperator
 ) {
     public boolean getMatchAll() {
         return matchAll != null && matchAll;
@@ -22,5 +28,28 @@ public record PowerFilterRequest(
 
     public int getSize() {
         return size != null ? size : 5;
+    }
+
+    public String getTpOperator() {
+        return normalizeOperator(tpOperator);
+    }
+
+    public String getHpOperator() {
+        return normalizeOperator(hpOperator);
+    }
+
+    public String getMpOperator() {
+        return normalizeOperator(mpOperator);
+    }
+
+    public String getEpOperator() {
+        return normalizeOperator(epOperator);
+    }
+
+    private static String normalizeOperator(String operator) {
+        if (operator == null || operator.isBlank()) {
+            return "lte";
+        }
+        return operator.trim().toLowerCase();
     }
 }

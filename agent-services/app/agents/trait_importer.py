@@ -445,14 +445,10 @@ def infer_primary_timing_category(trait: TraitRow) -> TraitCategory:
         r"\bat the end of\b",
         r"\bon a hit\b",
         r"\bon a miss\b",
-        r"\bon a success\b",
-        r"\bon a failure\b",
-        r"\bon a straight success\b",
-        r"\bon a superior success\b",
         r"\bif you are hit\b",
         r"\bif you take damage\b",
         r"\bif a creature\b",
-        r"\bif an enemy\b",
+        r"\bif an foe\b",
         r"\bif an ally\b",
     ]
 

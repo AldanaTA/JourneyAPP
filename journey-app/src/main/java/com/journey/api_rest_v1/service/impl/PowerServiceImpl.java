@@ -2,8 +2,10 @@ package com.journey.api_rest_v1.service.impl;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -17,12 +19,14 @@ import com.journey.api_rest_v1.domain.powers.PowerCategories;
 import com.journey.api_rest_v1.domain.powers.PowerCategoriesId;
 import com.journey.api_rest_v1.domain.powers.PowerCategory;
 import com.journey.api_rest_v1.dto.power.CreatePowerRequest;
+import com.journey.api_rest_v1.dto.power.PowerFilterRequest;
 import com.journey.api_rest_v1.dto.power.PowerResponseDto;
 import com.journey.api_rest_v1.mapper.PowerMapper;
 import com.journey.api_rest_v1.repository.ContentSourceRepository;
 import com.journey.api_rest_v1.repository.PowerCategoriesRepository;
 import com.journey.api_rest_v1.repository.PowerRepository;
 import com.journey.api_rest_v1.service.PowerService;
+import com.journey.api_rest_v1.specification.PowerSpecifications;
 
 @Service
 public class PowerServiceImpl implements PowerService {
@@ -206,6 +210,38 @@ public class PowerServiceImpl implements PowerService {
             return powerRepository.findByCategories_CategoryIn(categories, pageable)
                     .map(powerMapper::CreateResponse);
         }
+    }
+
+    @Override
+    public Page<PowerResponseDto> filterPowers(PowerFilterRequest request) {
+        Specification<Power> specification = (root, query, cb) -> cb.conjunction();
+
+        if (request.categories() != null && !request.categories().isEmpty()) {
+            specification = specification.and(PowerSpecifications.withCategories(request.categories(), request.getMatchAll()));
+        }
+
+        if (request.tpCost() != null && request.tpCost() > 0) {
+            specification = specification.and(
+                PowerSpecifications.withResourceFilter("tpCost", request.getTpOperator(), request.tpCost()));
+        }
+
+        if (request.hpCost() != null && request.hpCost() > 0) {
+            specification = specification.and(
+                PowerSpecifications.withResourceFilter("hpCost", request.getHpOperator(), request.hpCost()));
+        }
+
+        if (request.mpCost() != null && request.mpCost() > 0) {
+            specification = specification.and(
+                PowerSpecifications.withResourceFilter("mpCost", request.getMpOperator(), request.mpCost()));
+        }
+
+        if (request.epCost() != null && request.epCost() > 0) {
+            specification = specification.and(
+                PowerSpecifications.withResourceFilter("epCost", request.getEpOperator(), request.epCost()));
+        }
+
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by(Sort.Direction.ASC, "name"));
+        return powerRepository.findAll(specification, pageable).map(powerMapper::CreateResponse);
     }
 
 }

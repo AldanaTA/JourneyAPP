@@ -279,17 +279,10 @@ def infer_power_timing_category(power: PowerRow) -> PowerCategory:
     triggered_patterns = [
         r"\bwhen\b",
         r"\bwhenever\b",
-        r"\bafter\b",
-        r"\bbefore\b",
         r"\bat the start of\b",
         r"\bat the end of\b",
-        r"\bon a hit\b",
-        r"\bon a miss\b",
-        r"\bon a success\b",
-        r"\bon a failure\b",
-        r"\bif you\b",
         r"\bif a creature\b",
-        r"\bif an enemy\b",
+        r"\bif an foe\b",
         r"\bif an ally\b",
     ]
 
