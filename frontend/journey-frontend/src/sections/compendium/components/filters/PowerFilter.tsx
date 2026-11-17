@@ -70,6 +70,27 @@ interface PowerFilterState {
   mpOperator: Operator;
   epCost: number | "";
   epOperator: Operator;
+  name: string;
+}
+
+export interface PowerFilterRequest {
+  categories: PowerCategory[];
+  matchAll: boolean;
+  page: number;
+  size: number;
+  tpCost: number | null;
+  tpOperator: Operator;
+  hpCost: number | null;
+  hpOperator: Operator;
+  mpCost: number | null;
+  mpOperator: Operator;
+  epCost: number | null;
+  epOperator: Operator;
+  name: string | null;
+}
+
+interface PowerFilterProps {
+  onApply?: (request: PowerFilterRequest) => void;
 }
 
 const initialState: PowerFilterState = {
@@ -84,10 +105,10 @@ const initialState: PowerFilterState = {
   mpOperator: "lte",
   epCost: "",
   epOperator: "lte",
+  name: "",
 };
 
-export function PowerFilter() {
-  const [search, setSearch] = useState("");
+export function PowerFilter({ onApply }: PowerFilterProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [filters, setFilters] = useState<PowerFilterState>(initialState);
 
@@ -116,12 +137,26 @@ export function PowerFilter() {
 
   const clearFilters = () => {
     setFilters(initialState);
-    setSearch("");
   };
 
   const applyFilters = () => {
+    const request: PowerFilterRequest = {
+      categories: filters.categories,
+      matchAll: filters.matchAll,
+      page: 0,
+      size: 5,
+      tpCost: filters.tpCost === "" ? null : filters.tpCost,
+      tpOperator: filters.tpOperator,
+      hpCost: filters.hpCost === "" ? null : filters.hpCost,
+      hpOperator: filters.hpOperator,
+      mpCost: filters.mpCost === "" ? null : filters.mpCost,
+      mpOperator: filters.mpOperator,
+      epCost: filters.epCost === "" ? null : filters.epCost,
+      epOperator: filters.epOperator,
+      name: filters.name.trim() || null,
+    };
+    onApply?.(request);
     setMenuOpen(false);
-    // placeholder: this is where the API request payload would be created later
   };
 
   return (
@@ -130,9 +165,11 @@ export function PowerFilter() {
         <div className="flex flex-1 items-center gap-2 rounded-lg bg-slate-100 px-3 py-2">
           <Search className="h-4 w-4 text-slate-500" />
           <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search powers..."
+            value={filters.name}
+            onChange={(event) =>
+              setFilters((current) => ({ ...current, name: event.target.value }))
+            }
+            placeholder="Enter power name..."
             className="w-full border-0 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
           />
         </div>
