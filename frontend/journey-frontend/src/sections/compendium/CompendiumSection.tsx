@@ -1,51 +1,103 @@
-import { BookOpenText, Library, ScrollText } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState } from "react";
+import { CategorySelector, type CompendiumCategory } from "./components/CategorySelector";
+import { PowerFilter } from "./components/filters/PowerFilter";
+import { TraitFilter } from "./components/filters/TraitFilter";
+import { JobFilter } from "./components/filters/JobFilter";
+import { ItemFilter } from "./components/filters/ItemFilter";
+import { CreatureFilter } from "./components/filters/CreatureFilter";
+import { PowerLoader } from "./components/loaders/PowerLoader";
+import { TraitLoader } from "./components/loaders/TraitLoader";
+import { JobLoader } from "./components/loaders/JobLoader";
+import { ItemLoader } from "./components/loaders/ItemLoader";
+import { CreatureLoader } from "./components/loaders/CreatureLoader";
 
 function CompendiumSection() {
+  const [selectedCategory, setSelectedCategory] = useState<CompendiumCategory>("Powers");
+
+  const renderFilter = () => {
+    switch (selectedCategory) {
+      case "Powers":
+        return <PowerFilter />;
+      case "Traits":
+        return <TraitFilter />;
+      case "Jobs":
+        return <JobFilter />;
+      case "Items":
+        return <ItemFilter />;
+      case "Creatures":
+        return <CreatureFilter />;
+      default:
+        return null;
+    }
+  };
+
+  const renderLoader = () => {
+    switch (selectedCategory) {
+      case "Powers":
+        return <PowerLoader />;
+      case "Traits":
+        return <TraitLoader />;
+      case "Jobs":
+        return <JobLoader />;
+      case "Items":
+        return <ItemLoader />;
+      case "Creatures":
+        return <CreatureLoader />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <header className="flex items-end justify-between gap-3 pt-1">
-        <div>
-          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-600">
-            Reference
-          </p>
-          <h2 className="m-0 text-3xl font-semibold tracking-tight text-slate-900">Compendium</h2>
-        </div>
+      <header className="flex flex-col gap-2 border-b border-slate-200 pb-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-violet-600">
+          Reference
+        </p>
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+          Compendium
+        </h2>
       </header>
 
-      <Card className="shadow-sm">
-        <CardContent className="gap-3 p-3">
-          <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
-              <ScrollText size={18} />
+      <div className="space-y-4">
+        <CategorySelector value={selectedCategory} onChange={setSelectedCategory} />
+
+        <div className="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+            <div className="mb-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                Filters
+              </p>
             </div>
-            <div>
-              <strong className="block text-base font-semibold text-slate-900">Bestiary</strong>
-              <span className="block text-sm text-slate-600">Creatures and monsters</span>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-slate-700">Current Category</span>
+                <span className="rounded-full bg-violet-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-700">
+                  {selectedCategory}
+                </span>
+              </div>
+
+              <div className="mt-3">{renderFilter()}</div>
             </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
-              <BookOpenText size={18} />
+          </aside>
+
+          <main className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                  Content
+                </p>
+                <h3 className="mt-1 text-lg font-semibold text-slate-900">{selectedCategory}</h3>
+              </div>
             </div>
-            <div>
-              <strong className="block text-base font-semibold text-slate-900">Magic Items</strong>
-              <span className="block text-sm text-slate-600">Relics and enchanted gear</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
-              <Library size={18} />
-            </div>
-            <div>
-              <strong className="block text-base font-semibold text-slate-900">World Lore</strong>
-              <span className="block text-sm text-slate-600">History, factions, and maps</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            <div>{renderLoader()}</div>
+          </main>
+        </div>
+      </div>
     </div>
-  )
+  );
 }
 
-export default CompendiumSection
+export default CompendiumSection;
