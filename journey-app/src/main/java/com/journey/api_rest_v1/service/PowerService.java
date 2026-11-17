@@ -20,8 +20,6 @@ public interface PowerService {
 
     PowerResponseDto getPowerById(String id);
 
-    PowerResponseDto getPowerByName(String name);
-
     PowerResponseDto updatePower(String id, CreatePowerRequest request);
 
     String deletePower(String id);

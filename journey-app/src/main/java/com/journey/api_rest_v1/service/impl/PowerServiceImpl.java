@@ -1,11 +1,14 @@
 package com.journey.api_rest_v1.service.impl;
 
 import java.time.OffsetDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +52,7 @@ public class PowerServiceImpl implements PowerService {
 
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"powersById", "powersByName", "powersAll"}, allEntries = true)
+    @CacheEvict(cacheNames = {"powersById", "powersAll"}, allEntries = true)
     public PowerResponseDto createPower(CreatePowerRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
         UUID contentSourceId = UUID.fromString(request.content_source_id());
@@ -109,7 +112,7 @@ public class PowerServiceImpl implements PowerService {
 
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"powersById", "powersByName", "powersAll"}, allEntries = true)
+    @CacheEvict(cacheNames = {"powersById", "powersAll"}, allEntries = true)
     public PowerResponseDto updatePower(String id, CreatePowerRequest request) {
        OffsetDateTime now = OffsetDateTime.now();
        UUID powerId = UUID.fromString(id);
@@ -170,7 +173,7 @@ public class PowerServiceImpl implements PowerService {
     }
 
     @Override
-    @CacheEvict(cacheNames = {"powersById", "powersByName", "powersAll"}, allEntries = true)
+    @CacheEvict(cacheNames = {"powersById", "powersAll"}, allEntries = true)
     public String deletePower(String id) {
         UUID powerId = UUID.fromString(id);
         Power existingPower = powerRepository.findById(powerId)
@@ -191,13 +194,6 @@ public class PowerServiceImpl implements PowerService {
         UUID powerId = UUID.fromString(id);
         return powerMapper.CreateResponse(powerRepository.findById(powerId)
                 .orElseThrow(() -> new RuntimeException("Power not found with id: " + id)));
-    }
-
-    @Override
-    @Cacheable(cacheNames = "powersByName", key = "#name")
-    public PowerResponseDto getPowerByName(String name) {
-        return powerMapper.CreateResponse(powerRepository.findByName(name)
-                .orElseThrow(() -> new RuntimeException("Power not found with name: " + name)));
     }
 
     @Override
@@ -247,8 +243,67 @@ public class PowerServiceImpl implements PowerService {
                 PowerSpecifications.withResourceFilter("epCost", request.getEpOperator(), request.epCost()));
         }
 
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by(Sort.Direction.ASC, "name"));
+        boolean searchByName = request.name() != null && !request.name().isBlank();
+        Pageable pageable = PageRequest.of(
+                request.getPage(),
+                request.getSize(),
+                searchByName ? Sort.unsorted() : Sort.by(Sort.Direction.ASC, "name"));
+        if (searchByName) {
+            String searchName = request.name().trim().toLowerCase(Locale.ROOT);
+            Specification<Power> exactNameSpecification = specification.and((root, query, cb) ->
+                    cb.equal(cb.lower(root.<String>get("name")), searchName));
+            List<Power> exactMatches = powerRepository.findAll(
+                    exactNameSpecification,
+                    PageRequest.of(0, 1, Sort.by(Sort.Direction.ASC, "name")))
+                    .getContent();
+            if (!exactMatches.isEmpty()) {
+                PowerResponseDto exactMatch = powerMapper.CreateResponse(exactMatches.get(0));
+                Pageable exactMatchPage = PageRequest.of(0, request.getSize());
+                return new PageImpl<>(List.of(exactMatch), exactMatchPage, 1);
+            }
+
+            List<Power> rankedPowers = powerRepository.findAll(specification).stream()
+                    .sorted(Comparator
+                            .comparingInt((Power power) -> levenshteinDistance(
+                                    searchName, power.getName().toLowerCase(Locale.ROOT)))
+                            .thenComparing(Power::getName, String.CASE_INSENSITIVE_ORDER))
+                    .toList();
+
+            int start = (int) Math.min(pageable.getOffset(), rankedPowers.size());
+            int end = (int) Math.min(pageable.getOffset() + pageable.getPageSize(), rankedPowers.size());
+            List<PowerResponseDto> pageContent = rankedPowers.subList(start, end).stream()
+                    .map(powerMapper::CreateResponse)
+                    .toList();
+            return new PageImpl<>(pageContent, pageable, rankedPowers.size());
+        }
+
         return powerRepository.findAll(specification, pageable).map(powerMapper::CreateResponse);
+    }
+
+    private static int levenshteinDistance(String first, String second) {
+        String columns = first.length() <= second.length() ? first : second;
+        String rows = first.length() <= second.length() ? second : first;
+        int[] previous = new int[columns.length() + 1];
+        int[] current = new int[columns.length() + 1];
+
+        for (int column = 0; column <= columns.length(); column++) {
+            previous[column] = column;
+        }
+
+        for (int row = 1; row <= rows.length(); row++) {
+            current[0] = row;
+            for (int column = 1; column <= columns.length(); column++) {
+                int substitutionCost = rows.charAt(row - 1) == columns.charAt(column - 1) ? 0 : 1;
+                current[column] = Math.min(
+                        Math.min(current[column - 1] + 1, previous[column] + 1),
+                        previous[column - 1] + substitutionCost);
+            }
+            int[] temp = previous;
+            previous = current;
+            current = temp;
+        }
+
+        return previous[columns.length()];
     }
 
 }

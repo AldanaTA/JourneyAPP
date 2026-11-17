@@ -16,7 +16,8 @@ public record PowerFilterRequest(
     Integer mpCost,
     String mpOperator,
     Integer epCost,
-    String epOperator
+    String epOperator,
+    String name
 ) {
     public boolean getMatchAll() {
         return matchAll != null && matchAll;

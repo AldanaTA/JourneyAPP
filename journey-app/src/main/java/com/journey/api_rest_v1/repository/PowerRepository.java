@@ -1,7 +1,6 @@
 package com.journey.api_rest_v1.repository;
 
 import java.util.Collection;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -15,8 +14,6 @@ import com.journey.api_rest_v1.domain.powers.Power;
 import com.journey.api_rest_v1.domain.powers.PowerCategory;
 
 public interface PowerRepository extends JpaRepository<Power, UUID>, JpaSpecificationExecutor<Power> {
-    Optional<Power> findByName(String name);
-
     Page<Power> findByCategories_CategoryIn(Collection<PowerCategory> categories, Pageable pageable);
 
     @Query("""

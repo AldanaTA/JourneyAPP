@@ -42,11 +42,6 @@ public class PowerController {
         return new ResponseEntity<>(powerService.getPowerById(id), HttpStatus.OK);
     }
 
-    @GetMapping("/name/{name}")
-    public ResponseEntity<PowerResponseDto> getPowerByName(@PathVariable String name) {
-        return new ResponseEntity<>(powerService.getPowerByName(name), HttpStatus.OK);
-    }
-
     @GetMapping()
     public ResponseEntity<Iterable<PowerResponseDto>> getAllPowers(
         @RequestParam(defaultValue = "0") int page, 
