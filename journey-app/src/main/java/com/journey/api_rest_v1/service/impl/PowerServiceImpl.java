@@ -2,9 +2,10 @@ package com.journey.api_rest_v1.service.impl;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +49,7 @@ public class PowerServiceImpl implements PowerService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = {"powersById", "powersByName", "powersAll"}, allEntries = true)
     public PowerResponseDto createPower(CreatePowerRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
         UUID contentSourceId = UUID.fromString(request.content_source_id());
@@ -106,7 +108,8 @@ public class PowerServiceImpl implements PowerService {
     }
 
     @Override
-    @Transactional 
+    @Transactional
+    @CacheEvict(cacheNames = {"powersById", "powersByName", "powersAll"}, allEntries = true)
     public PowerResponseDto updatePower(String id, CreatePowerRequest request) {
        OffsetDateTime now = OffsetDateTime.now();
        UUID powerId = UUID.fromString(id);
@@ -167,6 +170,7 @@ public class PowerServiceImpl implements PowerService {
     }
 
     @Override
+    @CacheEvict(cacheNames = {"powersById", "powersByName", "powersAll"}, allEntries = true)
     public String deletePower(String id) {
         UUID powerId = UUID.fromString(id);
         Power existingPower = powerRepository.findById(powerId)
@@ -182,6 +186,7 @@ public class PowerServiceImpl implements PowerService {
     }
 
     @Override
+    @Cacheable(cacheNames = "powersById", key = "#id")
     public PowerResponseDto getPowerById(String id) {
         UUID powerId = UUID.fromString(id);
         return powerMapper.CreateResponse(powerRepository.findById(powerId)
@@ -189,12 +194,14 @@ public class PowerServiceImpl implements PowerService {
     }
 
     @Override
+    @Cacheable(cacheNames = "powersByName", key = "#name")
     public PowerResponseDto getPowerByName(String name) {
         return powerMapper.CreateResponse(powerRepository.findByName(name)
                 .orElseThrow(() -> new RuntimeException("Power not found with name: " + name)));
     }
 
     @Override
+    @Cacheable(cacheNames = "powersAll", key = "#page + ':' + #size + ':' + #sortBy + ':' + #sortDir")
     public Page<PowerResponseDto> getAllPowers(int page, int size, String sortBy, String sortDir) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortBy));
         return powerRepository.findAll(pageable).map(powerMapper::CreateResponse);
