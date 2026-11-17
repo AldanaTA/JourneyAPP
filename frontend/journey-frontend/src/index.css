@@ -120,11 +120,13 @@
 @layer base {
   * {
     box-sizing: border-box;
+    @apply border-border outline-ring/50;
   }
 
   html {
     font-family: 'Inter Variable', sans-serif;
     background: #f5efe7;
+    @apply font-sans;
   }
 
   body {
@@ -132,6 +134,7 @@
     min-height: 100vh;
     background: #f5efe7;
     color: #171717;
+    @apply bg-background text-foreground;
   }
 
   button {

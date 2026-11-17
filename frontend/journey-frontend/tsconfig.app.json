@@ -8,10 +8,20 @@
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
-    "baseUrl":".",
+    "baseUrl": ".",
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"],
+      "components": ["./src/components"],
+      "components/*": ["./src/components/*"],
+      "ui": ["./src/components/ui"],
+      "ui/*": ["./src/components/ui/*"],
+      "lib": ["./src/lib"],
+      "lib/*": ["./src/lib/*"],
+      "hooks": ["./src/hooks"],
+      "hooks/*": ["./src/hooks/*"],
+      "utils": ["./src/lib"],
+      "utils/*": ["./src/lib/*"]
     },
 
     /* Bundler mode */

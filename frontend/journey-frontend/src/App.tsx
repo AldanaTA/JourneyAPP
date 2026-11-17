@@ -11,7 +11,14 @@ import {
   Users,
 } from "lucide-react"
 import { Navigate, NavLink, Route, Routes } from "react-router-dom"
-import "./App.css"
+import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import GameLibrarySection from "./sections/game-library/GameLibrarySection"
 import CompendiumSection from "./sections/compendium/CompendiumSection"
 import CharactersSection from "./sections/characters/CharactersSection"
@@ -41,63 +48,88 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <div className="journey-app">
-      <div
-        className={`side-menu-backdrop ${menuOpen ? "is-open" : ""}`}
-        onClick={() => setMenuOpen(false)}
-      />
+    <div className="relative min-h-screen bg-[#f5efe7] text-slate-900">
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent
+          side="left"
+          showCloseButton
+          className="w-[86%] max-w-[320px] border-r border-slate-200 bg-[#fffdfb] p-5"
+        >
+          <SheetHeader className="mb-6 items-start gap-3 border-b border-slate-200 pb-4">
+            <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 text-sm font-black text-white">
+                J
+              </div>
+              <div>
+                <SheetTitle className="text-left text-base font-semibold text-slate-900">
+                  Jay Carter
+                </SheetTitle>
+                <SheetDescription className="text-left text-sm text-slate-500">
+                  Game Keeper
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
 
-      <aside className={`side-menu ${menuOpen ? "is-open" : ""}`} aria-label="Account menu">
-        <div className="side-menu-header">
-          <div className="avatar profile">J</div>
-          <div>
-            <p className="profile-name">Jay Carter</p>
-            <span className="profile-role">Game Keeper</span>
-          </div>
-        </div>
+          <nav className="space-y-2">
+            {menuOptions.map(({ label, icon: Icon, description }) => (
+              <Button
+                key={label}
+                type="button"
+                variant="ghost"
+                className="flex w-full justify-start gap-3 rounded-xl p-3 text-left hover:bg-slate-100"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+                  <Icon size={18} />
+                </span>
+                <span className="flex-1">
+                  <span className="block text-sm font-semibold text-slate-900">{label}</span>
+                  <span className="block text-xs text-slate-500">{description}</span>
+                </span>
+              </Button>
+            ))}
+          </nav>
+        </SheetContent>
+      </Sheet>
 
-        <nav className="side-menu-nav">
-          {menuOptions.map(({ label, icon: Icon, description }) => (
-            <button key={label} className="menu-item" type="button">
-              <span className="menu-icon">
-                <Icon size={18} />
-              </span>
-              <span>
-                <strong>{label}</strong>
-                <small>{description}</small>
-              </span>
-            </button>
-          ))}
-        </nav>
-      </aside>
-
-      <div className="mobile-shell">
-        <header className="top-header">
-          <button
-            className="menu-button"
+      <div className="relative mx-auto flex min-h-screen max-w-[480px] flex-col bg-white/40 shadow-[0_20px_50px_rgba(25,30,36,0.12)] backdrop-blur-xl">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-white/10 bg-[#201a12]/95 px-3 py-3 backdrop-blur-md">
+          <Button
             type="button"
+            variant="outline"
+            size="icon"
             aria-label="Open menu"
             onClick={() => setMenuOpen(true)}
+            className="h-9 w-9 rounded-xl border-white/10 bg-white/5 text-white hover:bg-white/10"
           >
-            <Menu size={22} />
-          </button>
+            <Menu size={20} />
+          </Button>
 
-          <nav className="section-selector" aria-label="Choose app section">
+          <nav
+            className="flex flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label="Choose app section"
+          >
             {sections.map(({ id, label, path, icon: Icon }) => (
               <NavLink
                 key={id}
                 to={path}
                 end={path === "/library"}
-                className={({ isActive }) => `section-tab ${isActive ? "selected" : ""}`}
+                className={({ isActive }) =>
+                  `inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border px-2.5 py-2 text-[11px] font-semibold tracking-wide transition-colors ${
+                    isActive
+                      ? "border-transparent bg-gradient-to-r from-violet-500 to-violet-400 text-white shadow-lg shadow-violet-500/30"
+                      : "border-transparent bg-white/5 text-white/80 hover:bg-white/10"
+                  }`
+                }
               >
-                <Icon size={18} />
+                <Icon size={16} />
                 <span>{label}</span>
               </NavLink>
             ))}
           </nav>
         </header>
 
-        <main className="app-content">
+        <main className="flex-1 px-4 py-5">
           <Routes>
             <Route path="/" element={<Navigate to="/library" replace />} />
             <Route path="/library" element={<GameLibrarySection />} />
