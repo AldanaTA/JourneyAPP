@@ -150,7 +150,7 @@ function App() {
       
       {/*Desktop View */}
       <div className="hidden min-h-screen bg-[#f5efe7] lg:flex lg:items-stretch lg:justify-center lg:p-8">
-        <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1400px] flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white/40 shadow-[0_30px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+        <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1400px] flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white/90 shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
           <header className="flex items-center gap-3 border-b border-white/10 bg-[#201a12]/95 px-3 py-3 backdrop-blur-md">
            
 
