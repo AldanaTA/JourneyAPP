@@ -1,14 +1,12 @@
-import { useState } from "react";
+import { memo } from "react";
 import type { Power } from "../../../../models/Power";
-import { PowerDetailsModal } from "./PowerDetailsModal";
 
 interface PowerCardProps {
   power: Power;
+  onViewDetails: (power: Power) => void;
 }
 
-export function PowerCard({ power }: PowerCardProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
+export const PowerCard = memo(function PowerCard({ power, onViewDetails }: PowerCardProps) {
   const cost = [
     power.mpCost !== null ? `${power.mpCost} MP` : null,
     power.tpCost !== null ? `${power.tpCost} TP` : null,
@@ -30,7 +28,7 @@ export function PowerCard({ power }: PowerCardProps) {
 
           <button
             type="button"
-            onClick={() => setIsOpen(true)}
+            onClick={() => onViewDetails(power)}
             aria-label={`View details for ${power.name}`}
             className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-600 bg-slate-800 text-slate-200 transition hover:bg-slate-700"
             title="View power details"
@@ -70,10 +68,8 @@ export function PowerCard({ power }: PowerCardProps) {
           </div>
         </div>
       </div>
-
-      <PowerDetailsModal power={power} isOpen={isOpen} onClose={() => setIsOpen(false)} />
     </>
   );
-}
+});
 
 export default PowerCard;

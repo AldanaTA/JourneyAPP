@@ -1,5 +1,6 @@
 import { EllipsisVertical, Search, X } from "lucide-react";
 import { useState } from "react";
+import type { PowerFilterRequest } from "@/apis/powerApi";
 import type { PowerCategory, PowerType } from "@/models/Power";
 
 const powerTypeOptions: PowerType[] = ["Destruction", "Support", "Sabotage", "Utility"];
@@ -73,23 +74,6 @@ interface PowerFilterState {
   epCost: number | "";
   epOperator: Operator;
   name: string;
-}
-
-export interface PowerFilterRequest {
-  type: PowerType | null;
-  categories: PowerCategory[];
-  matchAll: boolean;
-  page: number;
-  size: number;
-  tpCost: number | null;
-  tpOperator: Operator;
-  hpCost: number | null;
-  hpOperator: Operator;
-  mpCost: number | null;
-  mpOperator: Operator;
-  epCost: number | null;
-  epOperator: Operator;
-  name: string | null;
 }
 
 interface PowerFilterProps {

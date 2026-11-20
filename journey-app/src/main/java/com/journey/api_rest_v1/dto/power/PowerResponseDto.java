@@ -1,5 +1,7 @@
 package com.journey.api_rest_v1.dto.power;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.List;
 import com.journey.api_rest_v1.domain.powers.PowerCategory;
 
@@ -26,4 +28,7 @@ public record PowerResponseDto(
     String lvlUpEffect,
     List<PowerCategory> categories,
     String contentSourceName
-) {}
+) implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
+}

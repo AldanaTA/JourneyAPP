@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { PowerFilterRequest } from "@/apis/powerApi";
 import { CategorySelector, type CompendiumCategory } from "./components/CategorySelector";
 import { PowerFilter } from "./components/filters/PowerFilter";
 import { TraitFilter } from "./components/filters/TraitFilter";
@@ -13,11 +14,12 @@ import { CreatureLoader } from "./components/loaders/CreatureLoader";
 
 function CompendiumSection() {
   const [selectedCategory, setSelectedCategory] = useState<CompendiumCategory>("Powers");
+  const [powerFilters, setPowerFilters] = useState<PowerFilterRequest | null>(null);
 
   const renderFilter = () => {
     switch (selectedCategory) {
       case "Powers":
-        return <PowerFilter />;
+        return <PowerFilter onApply={setPowerFilters} />;
       case "Traits":
         return <TraitFilter />;
       case "Jobs":
@@ -34,7 +36,7 @@ function CompendiumSection() {
   const renderLoader = () => {
     switch (selectedCategory) {
       case "Powers":
-        return <PowerLoader />;
+        return <PowerLoader filters={powerFilters} />;
       case "Traits":
         return <TraitLoader />;
       case "Jobs":

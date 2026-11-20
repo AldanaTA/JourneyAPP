@@ -1,25 +1,97 @@
+import { useCallback, useRef, useState } from "react";
+import type { UIEvent } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Power } from "../../../../models/Power";
+import { Spinner } from "@/components/ui/spinner";
 import { PowerCard } from "./PowerCard";
+import { PowerDetailsModal } from "./PowerDetailsModal";
 
 interface PowerListProps {
   powers: Power[];
+  loadingMore: boolean;
+  loadMoreError: string | null;
+  onEndReached: () => void;
+  onRetry: () => void;
 }
 
-export function PowerList({ powers }: PowerListProps) {
-  if (!powers || powers.length === 0) {
+const OVERSCAN_COUNT = 5;
+const PREFETCH_DISTANCE = 500;
+
+export function PowerList({ powers, loadingMore, loadMoreError, onEndReached, onRetry }: PowerListProps) {
+  const scrollElementRef = useRef<HTMLDivElement>(null);
+  const [selectedPower, setSelectedPower] = useState<Power | null>(null);
+  const openDetails = useCallback((power: Power) => setSelectedPower(power), []);
+  const closeDetails = useCallback(() => setSelectedPower(null), []);
+  const virtualizer = useVirtualizer({
+    count: powers.length,
+    getScrollElement: () => scrollElementRef.current,
+    estimateSize: () => 180,
+    overscan: OVERSCAN_COUNT,
+  });
+  const virtualItems = virtualizer.getVirtualItems();
+  const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    if (element.scrollHeight - element.scrollTop - element.clientHeight <= PREFETCH_DISTANCE) {
+      onEndReached();
+    }
+  }, [onEndReached]);
+
+  if (powers.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/40 p-8 text-center text-slate-400">
+      <div
+        ref={scrollElementRef}
+        className="max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-dashed border-slate-700 bg-slate-900/40 p-8 text-center text-slate-400"
+      >
         No powers available.
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {powers.map((power) => (
-        <PowerCard key={power.id} power={power} />
-      ))}
-    </div>
+    <>
+      <div
+        ref={scrollElementRef}
+        className="max-h-[70vh] overflow-y-auto overscroll-contain pr-2"
+        aria-label="Powers"
+        onScroll={handleScroll}
+      >
+        <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+          {virtualItems.map((virtualItem) => (
+            <div
+              key={virtualItem.key}
+              data-index={virtualItem.index}
+              ref={virtualizer.measureElement}
+              className="absolute left-0 top-0 w-full pb-4"
+              style={{ transform: `translateY(${virtualItem.start}px)` }}
+            >
+              <PowerCard power={powers[virtualItem.index]} onViewDetails={openDetails} />
+            </div>
+          ))}
+        </div>
+
+        {loadMoreError ? (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <span>Unable to load more powers: {loadMoreError}</span>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="shrink-0 rounded-md border border-red-300 px-3 py-1.5 font-medium hover:bg-red-100"
+            >
+              Retry
+            </button>
+          </div>
+        ) : loadingMore ? (
+          <div className="flex items-center justify-center gap-2 py-3 text-sm text-slate-500">
+            <Spinner className="h-4 w-4" />
+            <span>Loading more powers...</span>
+          </div>
+        ) : null}
+      </div>
+
+      {selectedPower && (
+        <PowerDetailsModal power={selectedPower} isOpen onClose={closeDetails} />
+      )}
+    </>
   );
 }
 
