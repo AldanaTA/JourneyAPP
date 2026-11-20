@@ -1,7 +1,8 @@
 import { EllipsisVertical, Search, X } from "lucide-react";
 import { useState } from "react";
-import type { PowerCategory } from "@/models/Power";
+import type { PowerCategory, PowerType } from "@/models/Power";
 
+const powerTypeOptions: PowerType[] = ["Destruction", "Support", "Sabotage", "Utility"];
 const powerCategoryOptions: PowerCategory[] = [
     "ACID"
     ,"BLEEDING"
@@ -60,6 +61,7 @@ type Operator = "lte" | "lt" | "eq" | "gt" | "gte";
 
 interface PowerFilterState {
   search: string;
+  type: PowerType | "";
   categories: PowerCategory[];
   matchAll: boolean;
   tpCost: number | "";
@@ -74,6 +76,7 @@ interface PowerFilterState {
 }
 
 export interface PowerFilterRequest {
+  type: PowerType | null;
   categories: PowerCategory[];
   matchAll: boolean;
   page: number;
@@ -95,6 +98,7 @@ interface PowerFilterProps {
 
 const initialState: PowerFilterState = {
   search: "",
+  type: "",
   categories: [],
   matchAll: false,
   tpCost: "",
@@ -141,6 +145,7 @@ export function PowerFilter({ onApply }: PowerFilterProps) {
 
   const applyFilters = () => {
     const request: PowerFilterRequest = {
+      type: filters.type || null,
       categories: filters.categories,
       matchAll: filters.matchAll,
       page: 0,
@@ -205,6 +210,28 @@ export function PowerFilter({ onApply }: PowerFilterProps) {
             </div>
 
             <div className="space-y-5">
+              <div>
+                <label htmlFor="power-type-filter" className="mb-2 block text-sm font-medium text-slate-700">
+                  Power Type
+                </label>
+                <select
+                  id="power-type-filter"
+                  value={filters.type}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      type: event.target.value as PowerType | "",
+                    }))
+                  }
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none"
+                >
+                  <option value="">All types</option>
+                  {powerTypeOptions.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">Categories</label>
                 <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2">

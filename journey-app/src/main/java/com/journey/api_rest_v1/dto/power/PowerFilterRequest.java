@@ -3,8 +3,10 @@ package com.journey.api_rest_v1.dto.power;
 import java.util.List;
 
 import com.journey.api_rest_v1.domain.powers.PowerCategory;
+import com.journey.api_rest_v1.domain.powers.PowerType;
 
 public record PowerFilterRequest(
+    PowerType type,
     List<PowerCategory> categories,
     Boolean matchAll,
     Integer page,
@@ -28,7 +30,7 @@ public record PowerFilterRequest(
     }
 
     public int getSize() {
-        return size != null ? size : 5;
+        return size != null && size > 0 ? size : 5;
     }
 
     public String getTpOperator() {
@@ -46,11 +48,11 @@ public record PowerFilterRequest(
     public String getEpOperator() {
         return normalizeOperator(epOperator);
     }
-
     private static String normalizeOperator(String operator) {
         if (operator == null || operator.isBlank()) {
             return "lte";
         }
         return operator.trim().toLowerCase();
     }
+    
 }

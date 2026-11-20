@@ -8,6 +8,7 @@ import org.springframework.data.jpa.domain.Specification;
 import com.journey.api_rest_v1.domain.powers.Power;
 import com.journey.api_rest_v1.domain.powers.PowerCategories;
 import com.journey.api_rest_v1.domain.powers.PowerCategory;
+import com.journey.api_rest_v1.domain.powers.PowerType;
 
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -47,6 +48,14 @@ public final class PowerSpecifications {
             Path<PowerCategory> categoryPath = join.get("id").get("category");
             return categoryPath.in(categories);
         };
+    }
+
+    public static Specification<Power> withType(PowerType type) {
+        if (type == null) {
+            return (root, query, cb) -> cb.conjunction();
+        }
+
+        return (root, query, cb) -> cb.equal(root.get("type"), type);
     }
 
     public static Specification<Power> withResourceFilter(String fieldName, String operator, Integer value) {

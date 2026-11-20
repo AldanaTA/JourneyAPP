@@ -217,7 +217,7 @@ public class PowerServiceImpl implements PowerService {
 
     @Override
     public Page<PowerResponseDto> filterPowers(PowerFilterRequest request) {
-        Specification<Power> specification = (root, query, cb) -> cb.conjunction();
+        Specification<Power> specification = PowerSpecifications.withType(request.type());
 
         if (request.categories() != null && !request.categories().isEmpty()) {
             specification = specification.and(PowerSpecifications.withCategories(request.categories(), request.getMatchAll()));
@@ -244,6 +244,7 @@ public class PowerServiceImpl implements PowerService {
         }
 
         boolean searchByName = request.name() != null && !request.name().isBlank();
+
         Pageable pageable = PageRequest.of(
                 request.getPage(),
                 request.getSize(),
