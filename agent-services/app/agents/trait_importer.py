@@ -108,7 +108,7 @@ class TraitRow(BaseModel):
         if value is None:
             return "None"
 
-        text = str(value).strip()
+        text = str(value).replace("\x00", "").strip()
         return text if text else "None"
 
     @field_validator(

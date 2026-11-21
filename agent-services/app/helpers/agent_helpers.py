@@ -20,6 +20,11 @@ from pathlib import Path
 T = TypeVar("T")
 R = TypeVar("R")
     
+def strip_nul(text: str) -> str:
+    """Remove NUL (0x00) bytes, which PostgreSQL text columns reject."""
+    return text.replace("\x00", "")
+
+
 def normalize_text(text: str) -> str:
     """Normalize line endings and collapse excessive blank lines."""
     text = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -81,13 +86,13 @@ def extract_text(path: Path | str) -> str:
     suffix = path.suffix.lower()
 
     if suffix == ".txt":
-        return read_txt(path)
+        return strip_nul(read_txt(path))
 
     if suffix == ".docx":
-        return read_docx(path)
+        return strip_nul(read_docx(path))
 
     if suffix == ".pdf":
-        return read_pdf(path)
+        return strip_nul(read_pdf(path))
 
     raise ValueError(f"Unsupported file type: {suffix}. Use .txt, .docx, or .pdf.")
 

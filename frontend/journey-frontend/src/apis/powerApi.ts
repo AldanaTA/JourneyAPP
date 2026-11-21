@@ -1,6 +1,6 @@
 import type { PowerPage, PowerType, PowerCategory } from "../models/Power";
 
-type Operator = "lte" | "lt" | "eq" | "gt" | "gte";
+export type Operator = "lte" | "lt" | "eq" | "gt" | "gte";
 
 export interface PowerFilterRequest {
   type: PowerType | null;

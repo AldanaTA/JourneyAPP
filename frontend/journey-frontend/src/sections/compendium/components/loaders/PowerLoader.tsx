@@ -12,6 +12,10 @@ interface PowerLoaderProps {
   filters: PowerFilterRequest | null;
 }
 
+/**
+ * Fetches powers for the current filters (or all powers when there are none) and handles paging.
+ * Results from an outdated filter are discarded so fast filter changes never show stale data.
+ */
 export function PowerLoader({ filters }: PowerLoaderProps) {
   const [result, setResult] = useState<{
     filters: PowerFilterRequest | null;
@@ -28,10 +32,12 @@ export function PowerLoader({ filters }: PowerLoaderProps) {
   const loading = result === null || result.filters !== filters;
   const error = loading ? null : result?.error ?? null;
 
+  /** Loads the first page whenever the filters change. */
   useEffect(() => {
     currentFiltersRef.current = filters;
     let isMounted = true;
 
+    /** Requests page 0 and stores it, or stores the error message on failure. */
     async function loadPowers() {
       try {
         const page = filters
@@ -68,6 +74,7 @@ export function PowerLoader({ filters }: PowerLoaderProps) {
     };
   }, [filters]);
 
+  /** Appends the next page; ignored while already loading, after an error (unless retrying), or at the end. */
   const loadMore = useCallback((retry = false) => {
     const currentResult = result?.filters === filters ? result : null;
     if (!currentResult || loading || (loadMoreError && !retry) || !currentResult.hasMore || loadingMoreRef.current) {
@@ -112,6 +119,7 @@ export function PowerLoader({ filters }: PowerLoaderProps) {
         setLoadingMore(false);
       });
   }, [filters, loadMoreError, loading, result]);
+  /** Retries a failed "load more" request. */
   const retryLoadMore = useCallback(() => loadMore(true), [loadMore]);
 
   if (loading) {
@@ -137,6 +145,8 @@ export function PowerLoader({ filters }: PowerLoaderProps) {
     <PowerList
       key={filters ? JSON.stringify(filters) : "all-powers"}
       powers={result?.filters === filters ? result.powers : []}
+      hasMore={result?.hasMore ?? false}
+      hasFilters={filters !== null}
       loadingMore={loadingMore}
       loadMoreError={loadMoreError}
       onEndReached={loadMore}

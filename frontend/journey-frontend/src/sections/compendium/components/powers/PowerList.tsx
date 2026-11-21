@@ -3,11 +3,14 @@ import type { UIEvent } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Power } from "../../../../models/Power";
 import { Spinner } from "@/components/ui/spinner";
+import { NoContent } from "../NoContent";
 import { PowerCard } from "./PowerCard";
 import { PowerDetailsModal } from "./PowerDetailsModal";
 
 interface PowerListProps {
   powers: Power[];
+  hasMore: boolean;
+  hasFilters: boolean;
   loadingMore: boolean;
   loadMoreError: string | null;
   onEndReached: () => void;
@@ -17,10 +20,16 @@ interface PowerListProps {
 const OVERSCAN_COUNT = 5;
 const PREFETCH_DISTANCE = 500;
 
-export function PowerList({ powers, loadingMore, loadMoreError, onEndReached, onRetry }: PowerListProps) {
+/**
+ * Virtualized, infinitely scrolling list of power cards.
+ * Only visible cards are rendered, and the next page is requested shortly before the user reaches the end.
+ */
+export function PowerList({ powers, hasMore, hasFilters, loadingMore, loadMoreError, onEndReached, onRetry }: PowerListProps) {
   const scrollElementRef = useRef<HTMLDivElement>(null);
   const [selectedPower, setSelectedPower] = useState<Power | null>(null);
+  /** Opens the details modal for the tapped power. */
   const openDetails = useCallback((power: Power) => setSelectedPower(power), []);
+  /** Closes the details modal. */
   const closeDetails = useCallback(() => setSelectedPower(null), []);
   const virtualizer = useVirtualizer({
     count: powers.length,
@@ -29,6 +38,7 @@ export function PowerList({ powers, loadingMore, loadMoreError, onEndReached, on
     overscan: OVERSCAN_COUNT,
   });
   const virtualItems = virtualizer.getVirtualItems();
+  /** Requests the next page once the user scrolls within PREFETCH_DISTANCE pixels of the bottom. */
   const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget;
     if (element.scrollHeight - element.scrollTop - element.clientHeight <= PREFETCH_DISTANCE) {
@@ -38,12 +48,10 @@ export function PowerList({ powers, loadingMore, loadMoreError, onEndReached, on
 
   if (powers.length === 0) {
     return (
-      <div
-        ref={scrollElementRef}
-        className="max-h-[70vh] overflow-y-auto overscroll-contain rounded-xl border border-dashed border-slate-700 bg-slate-900/40 p-8 text-center text-slate-400"
-      >
-        No powers available.
-      </div>
+      <NoContent
+        message="No content to load"
+        hint={hasFilters ? "No powers match your search or filters. Try clearing them." : undefined}
+      />
     );
   }
 
@@ -85,6 +93,8 @@ export function PowerList({ powers, loadingMore, loadMoreError, onEndReached, on
             <Spinner className="h-4 w-4" />
             <span>Loading more powers...</span>
           </div>
+        ) : !hasMore ? (
+          <NoContent variant="footer" message="No more content to load" />
         ) : null}
       </div>
 

@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import type { Power } from "../../../../models/Power";
+import { formatPowerCategory, formatPowerCost, meaningfulText } from "./powerFormatters";
 
 interface PowerDetailsModalProps {
   power: Power;
@@ -6,15 +8,33 @@ interface PowerDetailsModalProps {
   onClose: () => void;
 }
 
+/**
+ * Full-detail view of a power. It slides up as a bottom sheet on phones and is a centered dialog on
+ * larger screens; it closes on backdrop tap, the close button, or the Escape key.
+ */
 export function PowerDetailsModal({ power, isOpen, onClose }: PowerDetailsModalProps) {
+  /** Closes the modal when Escape is pressed and locks background scrolling while it is open. */
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  const cost = [
-    power.mpCost !== null ? `${power.mpCost} MP` : null,
-    power.tpCost !== null ? `${power.tpCost} TP` : null,
-    power.hpCost !== null ? `${power.hpCost} HP` : null,
-    power.epCost !== null ? `${power.epCost} EP` : null,
-  ].filter(Boolean);
+  const cost = formatPowerCost(power);
+  const empowerEffect = meaningfulText(power.empowerEffect);
+  const lvlUpEffect = meaningfulText(power.lvlUpEffect);
 
   const componentString = [
     power.verbal ? "V" : null,
@@ -24,34 +44,32 @@ export function PowerDetailsModal({ power, isOpen, onClose }: PowerDetailsModalP
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-5 text-slate-100 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="power-details-title"
+        className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-700 bg-slate-900 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-slate-100 shadow-2xl sm:rounded-2xl"
         onClick={(event) => event.stopPropagation()}
       >
+        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-700 sm:hidden" aria-hidden="true" />
+
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.2em] text-violet-300">Power</p>
-            <h2 className="mt-1 text-2xl font-bold text-white">{power.name}</h2>
+            <h2 id="power-details-title" className="mt-1 text-2xl font-bold text-white">{power.name}</h2>
           </div>
 
           <button
             type="button"
             onClick={onClose}
             aria-label="Close power details"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700"
             title="Close"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-4 w-4"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
           </button>
@@ -60,10 +78,11 @@ export function PowerDetailsModal({ power, isOpen, onClose }: PowerDetailsModalP
         <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-slate-300">
           <span className="rounded-full bg-slate-800 px-2 py-1">LVL {power.lvl ?? "—"}</span>
           <span className="rounded-full bg-slate-800 px-2 py-1">{power.type}</span>
-          <span className="rounded-full bg-slate-800 px-2 py-1">{cost.length > 0 ? cost.join(" • ") : "—"}</span>
+          <span className="rounded-full bg-slate-800 px-2 py-1">{cost.length > 0 ? cost.join(" • ") : "No cost"}</span>
+          {power.concentration && <span className="rounded-full bg-slate-800 px-2 py-1">Concentration</span>}
         </div>
 
-        <div className="mt-5 grid gap-3 text-sm text-slate-200 sm:grid-cols-2">
+        <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-slate-200">
           <div>
             <span className="font-medium text-slate-300">Range:</span> {power.range ?? "—"}
           </div>
@@ -76,34 +95,32 @@ export function PowerDetailsModal({ power, isOpen, onClose }: PowerDetailsModalP
           <div>
             <span className="font-medium text-slate-300">Components:</span> {componentString}
           </div>
-          <div>
+          <div className="col-span-2 sm:col-span-1">
             <span className="font-medium text-slate-300">Material:</span> {power.materialComponents ?? "—"}
           </div>
-          <div>
+          <div className="col-span-2 sm:col-span-1">
             <span className="font-medium text-slate-300">Source:</span> {power.contentSourceName ?? "—"}
           </div>
         </div>
 
         <div className="mt-5">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Effect</h3>
-          <p className="mt-2 leading-relaxed text-slate-200">{power.effect ?? "No effect description provided."}</p>
+          <p className="mt-2 whitespace-pre-line leading-relaxed text-slate-200">
+            {power.effect ?? "No effect description provided."}
+          </p>
         </div>
 
-        {(power.empowerEffect || power.lvlUpEffect) && (
-          <div className="mt-5 space-y-4">
-            {power.empowerEffect && (
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-amber-300">Empower</h3>
-                <p className="mt-2 leading-relaxed text-slate-200">{power.empowerEffect}</p>
-              </div>
-            )}
+        {empowerEffect && (
+          <div className="mt-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-amber-300">Empower</h3>
+            <p className="mt-2 whitespace-pre-line leading-relaxed text-slate-200">{empowerEffect}</p>
+          </div>
+        )}
 
-            {power.lvlUpEffect && (
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Level Up</h3>
-                <p className="mt-2 leading-relaxed text-slate-200">{power.lvlUpEffect}</p>
-              </div>
-            )}
+        {lvlUpEffect && (
+          <div className="mt-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Level Up</h3>
+            <p className="mt-2 whitespace-pre-line leading-relaxed text-slate-200">{lvlUpEffect}</p>
           </div>
         )}
 
@@ -114,7 +131,7 @@ export function PowerDetailsModal({ power, isOpen, onClose }: PowerDetailsModalP
                 key={category}
                 className="rounded-full border border-violet-500/40 bg-violet-500/10 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-violet-200"
               >
-                {category}
+                {formatPowerCategory(category)}
               </span>
             ))
           ) : (

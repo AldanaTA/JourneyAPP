@@ -14,6 +14,13 @@ import com.journey.api_rest_v1.domain.powers.Power;
 import com.journey.api_rest_v1.domain.powers.PowerCategory;
 
 public interface PowerRepository extends JpaRepository<Power, UUID>, JpaSpecificationExecutor<Power> {
+
+    /** Returns true when a power already uses this normalized (lowercase, trimmed) name. */
+    boolean existsByNameKey(String nameKey);
+
+    /** Returns true when a power other than {@code id} already uses this normalized name. */
+    boolean existsByNameKeyAndIdNot(String nameKey, UUID id);
+
     Page<Power> findByCategories_CategoryIn(Collection<PowerCategory> categories, Pageable pageable);
 
     @Query("""
