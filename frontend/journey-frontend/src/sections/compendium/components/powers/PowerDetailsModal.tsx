@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { Power } from "../../../../models/Power";
 import { formatPowerCategory, formatPowerCost, meaningfulText } from "./powerFormatters";
 
@@ -42,7 +43,8 @@ export function PowerDetailsModal({ power, isOpen, onClose }: PowerDetailsModalP
     power.somatic ? "S" : null,
   ].filter(Boolean).join(", ") || "—";
 
-  return (
+  // Portaled to <body> so ancestors with backdrop-filter/transform cannot trap the fixed overlay.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
@@ -139,7 +141,8 @@ export function PowerDetailsModal({ power, isOpen, onClose }: PowerDetailsModalP
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

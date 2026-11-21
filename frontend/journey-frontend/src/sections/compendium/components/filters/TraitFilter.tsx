@@ -1,5 +1,6 @@
 import { SlidersHorizontal, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { FormEvent } from "react";
 import type { Operator, TraitFilterRequest } from "@/apis/traitApi";
 import type { TraitCategory } from "@/models/Trait";
@@ -315,7 +316,8 @@ export function TraitFilter({ onApply, initialFilters = null }: TraitFilterProps
         </button>
       </div>
 
-      {menuOpen && (
+      {/* Portaled to <body> so ancestors with backdrop-filter/transform cannot trap the fixed overlay. */}
+      {menuOpen && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 sm:items-center sm:p-4"
           onClick={() => setMenuOpen(false)}
@@ -327,7 +329,7 @@ export function TraitFilter({ onApply, initialFilters = null }: TraitFilterProps
             className="flex max-h-[90dvh] w-full max-w-xl flex-col rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 p-4">
               <h3 id="trait-filter-title" className="text-lg font-semibold text-slate-900">Trait Filters</h3>
               <button
                 type="button"
@@ -339,7 +341,7 @@ export function TraitFilter({ onApply, initialFilters = null }: TraitFilterProps
               </button>
             </div>
 
-            <div className="flex-1 space-y-5 overflow-y-auto overscroll-contain p-4">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4">
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-700">Categories</span>
@@ -347,7 +349,7 @@ export function TraitFilter({ onApply, initialFilters = null }: TraitFilterProps
                     <span className="text-xs text-slate-500">{draft.categories.length} selected</span>
                   )}
                 </div>
-                <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2">
+                <div className="flex flex-wrap gap-2 rounded-xl sm:max-h-48 sm:overflow-y-auto border border-slate-200 bg-slate-50 p-2">
                   {traitCategoryOptions.map((category) => {
                     const selected = draft.categories.includes(category);
                     return (
@@ -391,7 +393,7 @@ export function TraitFilter({ onApply, initialFilters = null }: TraitFilterProps
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-slate-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <button
                 type="button"
                 onClick={clearFilters}
@@ -408,7 +410,8 @@ export function TraitFilter({ onApply, initialFilters = null }: TraitFilterProps
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

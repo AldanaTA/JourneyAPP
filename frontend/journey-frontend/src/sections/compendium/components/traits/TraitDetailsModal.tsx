@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { Trait } from "../../../../models/Trait";
 import {
   formatTraitActivationCost,
@@ -40,7 +41,8 @@ export function TraitDetailsModal({ trait, isOpen, onClose }: TraitDetailsModalP
   const activationCost = formatTraitActivationCost(trait);
   const lvlUpEffect = meaningfulText(trait.lvlUpEffect);
 
-  return (
+  // Portaled to <body> so ancestors with backdrop-filter/transform cannot trap the fixed overlay.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
@@ -129,7 +131,8 @@ export function TraitDetailsModal({ trait, isOpen, onClose }: TraitDetailsModalP
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
