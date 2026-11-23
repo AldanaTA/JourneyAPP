@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { PowerFilterRequest } from "@/apis/powerApi";
 import type { TraitFilterRequest } from "@/apis/traitApi";
+import type { JobFilterRequest } from "@/apis/jobApi";
 import { CategorySelector, type CompendiumCategory } from "./components/CategorySelector";
 import { PowerFilter } from "./components/filters/PowerFilter";
 import { TraitFilter } from "./components/filters/TraitFilter";
@@ -17,6 +18,7 @@ function CompendiumSection() {
   const [selectedCategory, setSelectedCategory] = useState<CompendiumCategory>("Powers");
   const [powerFilters, setPowerFilters] = useState<PowerFilterRequest | null>(null);
   const [traitFilters, setTraitFilters] = useState<TraitFilterRequest | null>(null);
+  const [jobFilters, setJobFilters] = useState<JobFilterRequest | null>(null);
 
   const renderFilter = () => {
     switch (selectedCategory) {
@@ -25,7 +27,7 @@ function CompendiumSection() {
       case "Traits":
         return <TraitFilter onApply={setTraitFilters} initialFilters={traitFilters} />;
       case "Jobs":
-        return <JobFilter />;
+        return <JobFilter onApply={setJobFilters} initialFilters={jobFilters} />;
       case "Items":
         return <ItemFilter />;
       case "Creatures":
@@ -42,7 +44,7 @@ function CompendiumSection() {
       case "Traits":
         return <TraitLoader filters={traitFilters} />;
       case "Jobs":
-        return <JobLoader />;
+        return <JobLoader filters={jobFilters} />;
       case "Items":
         return <ItemLoader />;
       case "Creatures":
