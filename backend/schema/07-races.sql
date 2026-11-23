@@ -28,6 +28,10 @@ CREATE TABLE IF NOT EXISTS races (
     CONSTRAINT uq_races_race_name UNIQUE (race_name)
 );
 
+-- Case-insensitive uniqueness; the race importer upserts on this (ON CONFLICT (name_key)).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_races_name_key_unique
+ON races (name_key);
+
 CREATE TABLE IF NOT EXISTS race_traits (
     race_id UUID NOT NULL REFERENCES races(id) ON DELETE CASCADE,
     trait_id UUID NOT NULL REFERENCES traits(id) ON DELETE CASCADE,

@@ -1,6 +1,6 @@
-import { BookOpenText, BriefcaseBusiness, Layers3, Sparkles, Swords } from "lucide-react";
+import { BookOpenText, BriefcaseBusiness, Layers3, Sparkles, Swords, Dna } from "lucide-react";
 
-export type CompendiumCategory = "Powers" | "Traits" | "Jobs" | "Items" | "Creatures";
+export type CompendiumCategory = "Races" | "Powers" | "Traits" | "Jobs" | "Items" | "Creatures";
 
 interface CategorySelectorProps {
   value: CompendiumCategory;
@@ -8,6 +8,7 @@ interface CategorySelectorProps {
 }
 
 const categories: Array<{ label: CompendiumCategory; icon: typeof Sparkles }> = [
+  { label: "Races", icon: Dna },
   { label: "Powers", icon: Sparkles },
   { label: "Traits", icon: Layers3 },
   { label: "Jobs", icon: BriefcaseBusiness },

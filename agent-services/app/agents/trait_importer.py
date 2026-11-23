@@ -64,10 +64,14 @@ class TraitCategory(str, Enum):
     declared = "declared"
     triggered = "triggered"
     other = "other"
+    # Only assigned by the race importer to traits that belong to a race; never chosen by the agent.
+    racial = "racial"
 
 
 TRAIT_CATEGORY_VALUES = [category.value for category in TraitCategory]
 VALID_CATEGORIES = set(TRAIT_CATEGORY_VALUES)
+# Categories the agent may choose from. "racial" is excluded: it is set by the race importer.
+AGENT_TRAIT_CATEGORY_VALUES = [value for value in TRAIT_CATEGORY_VALUES if value != TraitCategory.racial.value]
 MISSING_TEXT_VALUES = {"", "-", "none", "n/a", "null"}
 
 
@@ -558,7 +562,7 @@ TRAIT_IMPORT_JSON_SCHEMA: dict[str, Any] = {
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "enum": TRAIT_CATEGORY_VALUES,
+                            "enum": AGENT_TRAIT_CATEGORY_VALUES,
                         },
                     },
                 },
@@ -634,7 +638,7 @@ Important:
 - Do not assign categories based on a single generic word.
 - Prefer fewer accurate categories over many weak categories.
 - Use only these enum values:
-{", ".join(TRAIT_CATEGORY_VALUES)}
+{", ".join(AGENT_TRAIT_CATEGORY_VALUES)}
 """
 
 AGENT_INSTRUCTIONS = f"""
@@ -659,7 +663,7 @@ Database columns:
 - lvl_up_effect TEXT DEFAULT 'None'
 
 Category enum values:
-{", ".join(TRAIT_CATEGORY_VALUES)}
+{", ".join(AGENT_TRAIT_CATEGORY_VALUES)}
 
 Field mapping rules:
 - The first name line maps to trait_name.
@@ -924,9 +928,11 @@ RETURNING id;
 """
 
 
+# Keeps "racial": it is owned by the race importer, so re-importing a trait must not strip it.
 DELETE_TRAIT_CATEGORIES_SQL = """
 DELETE FROM trait_categories
-WHERE trait_id = %(trait_id)s;
+WHERE trait_id = %(trait_id)s
+  AND category <> 'racial'::trait_category;
 """
 
 

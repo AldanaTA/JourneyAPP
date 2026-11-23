@@ -2,15 +2,18 @@ import { useState } from "react";
 import type { PowerFilterRequest } from "@/apis/powerApi";
 import type { TraitFilterRequest } from "@/apis/traitApi";
 import type { JobFilterRequest } from "@/apis/jobApi";
+import type { RaceFilterRequest } from "@/apis/raceApi";
 import { CategorySelector, type CompendiumCategory } from "./components/CategorySelector";
 import { PowerFilter } from "./components/filters/PowerFilter";
 import { TraitFilter } from "./components/filters/TraitFilter";
 import { JobFilter } from "./components/filters/JobFilter";
+import { RaceFilter } from "./components/filters/RaceFilter";
 import { ItemFilter } from "./components/filters/ItemFilter";
 import { CreatureFilter } from "./components/filters/CreatureFilter";
 import { PowerLoader } from "./components/loaders/PowerLoader";
 import { TraitLoader } from "./components/loaders/TraitLoader";
 import { JobLoader } from "./components/loaders/JobLoader";
+import { RaceLoader } from "./components/loaders/RaceLoader";
 import { ItemLoader } from "./components/loaders/ItemLoader";
 import { CreatureLoader } from "./components/loaders/CreatureLoader";
 
@@ -19,6 +22,7 @@ function CompendiumSection() {
   const [powerFilters, setPowerFilters] = useState<PowerFilterRequest | null>(null);
   const [traitFilters, setTraitFilters] = useState<TraitFilterRequest | null>(null);
   const [jobFilters, setJobFilters] = useState<JobFilterRequest | null>(null);
+  const [raceFilters, setRaceFilters] = useState<RaceFilterRequest | null>(null);
 
   const renderFilter = () => {
     switch (selectedCategory) {
@@ -28,6 +32,8 @@ function CompendiumSection() {
         return <TraitFilter onApply={setTraitFilters} initialFilters={traitFilters} />;
       case "Jobs":
         return <JobFilter onApply={setJobFilters} initialFilters={jobFilters} />;
+      case "Races":
+        return <RaceFilter onApply={setRaceFilters} initialFilters={raceFilters} />;
       case "Items":
         return <ItemFilter />;
       case "Creatures":
@@ -45,6 +51,8 @@ function CompendiumSection() {
         return <TraitLoader filters={traitFilters} />;
       case "Jobs":
         return <JobLoader filters={jobFilters} />;
+      case "Races":
+        return <RaceLoader filters={raceFilters} />;
       case "Items":
         return <ItemLoader />;
       case "Creatures":

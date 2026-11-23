@@ -10,6 +10,7 @@ from fastapi.responses import RedirectResponse
 from routers.power_routes import router as power_router
 from routers.trait_routes import router as trait_router
 from routers.job_routes import router as job_router
+from routers.race_routes import router as race_router
 
 load_dotenv()
 
@@ -49,3 +50,4 @@ def health() -> dict[str, str]:
 app.include_router(power_router)
 app.include_router(trait_router)
 app.include_router(job_router)
+app.include_router(race_router)
