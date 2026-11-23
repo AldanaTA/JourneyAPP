@@ -36,6 +36,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'trait_category') THEN
         CREATE TYPE trait_category AS ENUM (
             'damage',
+            'racial',
             'defense',
             'healing_recovery',
             'buff',

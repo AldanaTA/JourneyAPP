@@ -90,8 +90,8 @@ public final class JobSpecifications {
         };
     }
 
-    /** Matches the job whose trimmed, lowercased name equals {@code nameKey}. */
+    /** Matches the job whose database-generated {@code name_key} equals {@code nameKey}. */
     public static Specification<Job> withExactName(String nameKey) {
-        return (root, query, cb) -> cb.equal(cb.lower(cb.trim(root.get("jobName"))), nameKey);
+        return (root, query, cb) -> cb.equal(root.<String>get("nameKey"), nameKey);
     }
 }

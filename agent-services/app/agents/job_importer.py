@@ -715,23 +715,16 @@ VALUES (%(trait_id)s, %(category)s::trait_category)
 ON CONFLICT (trait_id, category) DO NOTHING;
 """
 
-FIND_JOB_SQL = """
-SELECT id FROM jobs WHERE LOWER(TRIM(name)) = LOWER(TRIM(%(name)s)) LIMIT 1;
-"""
-
-INSERT_JOB_SQL = """
+UPSERT_JOB_SQL = """
 INSERT INTO jobs (source_id, name, description)
 VALUES (%(source_id)s, %(name)s, %(description)s)
-RETURNING id;
-"""
-
-UPDATE_JOB_SQL = """
-UPDATE jobs
-SET source_id = %(source_id)s,
-    name = %(name)s,
-    description = %(description)s,
+ON CONFLICT (name_key)
+DO UPDATE SET
+    source_id = EXCLUDED.source_id,
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
     updated_at = NOW()
-WHERE id = %(job_id)s;
+RETURNING id;
 """
 
 DELETE_JOB_TRAITS_SQL = "DELETE FROM job_traits WHERE job_id = %(job_id)s;"
@@ -757,8 +750,8 @@ def insert_valid_jobs(
     """
     Insert new traits and valid jobs in a single transaction.
 
-    Existing traits are never modified. Re-importing a job (matched by
-    case-insensitive name) replaces its description, traits, and categories.
+    Existing traits are never modified. Re-importing a job (matched on the
+    jobs.name_key column) replaces its description, traits, and categories.
 
     Returns {"job_ids": [...], "trait_ids": [...]} for inserted/updated rows.
     """
@@ -805,15 +798,8 @@ def insert_valid_jobs(
                     "description": job.job_desc,
                 }
 
-                cur.execute(FIND_JOB_SQL, params)
-                row = cur.fetchone()
-
-                if row:
-                    job_id = row[0]
-                    cur.execute(UPDATE_JOB_SQL, {**params, "job_id": job_id})
-                else:
-                    cur.execute(INSERT_JOB_SQL, params)
-                    job_id = cur.fetchone()[0]
+                cur.execute(UPSERT_JOB_SQL, params)
+                job_id = cur.fetchone()[0]
 
                 cur.execute(DELETE_JOB_TRAITS_SQL, {"job_id": job_id})
 

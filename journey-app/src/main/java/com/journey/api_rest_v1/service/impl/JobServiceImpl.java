@@ -354,7 +354,7 @@ public class JobServiceImpl implements JobService {
         }
     }
 
-    /** Normalizes a name for case-insensitive comparison (trimmed, lowercase). */
+    /** Normalizes a name the same way the database computes {@code jobs.name_key} (trimmed, lowercase). */
     private static String normalizeName(String name) {
         return name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
     }

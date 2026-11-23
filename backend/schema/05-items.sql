@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     source_id UUID REFERENCES content_sources(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    
+    name_key TEXT GENERATED ALWAYS AS (LOWER(TRIM(name))) STORED,
     details JSONB  DEFAULT '{"schema_version": "1.0", "type": "item", "content": {}}'::JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

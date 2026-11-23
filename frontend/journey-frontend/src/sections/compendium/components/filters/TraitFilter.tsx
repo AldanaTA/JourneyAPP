@@ -20,6 +20,7 @@ const traitCategoryOptions: TraitCategory[] = [
   "MOBILITY",
   "OTHER",
   "PASSIVE",
+  "RACIAL",
   "RESOURCE_ECONOMY",
   "SKILL",
   "SOCIAL_ROLEPLAY",

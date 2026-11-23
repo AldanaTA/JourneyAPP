@@ -6,6 +6,7 @@ package com.journey.api_rest_v1.domain.traits;
  */
 public enum TraitCategory {
     DAMAGE,
+    RACIAL,
     DEFENSE,
     HEALING_RECOVERY,
     BUFF,

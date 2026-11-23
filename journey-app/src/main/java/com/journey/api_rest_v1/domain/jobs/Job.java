@@ -40,6 +40,9 @@ public class Job {
     @Column(name = "name", nullable = false)
     private String jobName;
 
+    @Column(name = "name_key", insertable = false, updatable = false)
+    private String nameKey;
+
     @Column(name = "description", nullable = false, columnDefinition = "TEXT")
     private String jobDesc;
 
@@ -105,6 +108,11 @@ public class Job {
     /** Sets the display name of the job. */
     public void setJobName(String jobName) {
         this.jobName = jobName;
+    }
+
+    /** Returns the database-generated lowercase/trimmed name used for uniqueness. */
+    public String getNameKey() {
+        return nameKey;
     }
 
     /** Returns the flavor description of the job. */

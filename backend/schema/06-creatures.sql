@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS creatures(
     creature_category_id UUID NOT NULL REFERENCES creature_categories(id) ON DELETE SET NULL,
     creature_threat_lvl INT NOT NULL,
     name TEXT NOT NULL,
+    name_key TEXT GENERATED ALWAYS AS (LOWER(TRIM(name))) STORED,
     details JSONB DEFAULT '{"schema_version": "1.0", "type": "creature", "content": {}}'::JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     source_id UUID NOT NULL REFERENCES content_sources(id) ON DELETE CASCADE,
 
     name TEXT NOT NULL,
+    name_key TEXT GENERATED ALWAYS AS (LOWER(TRIM(name))) STORED,
     description TEXT NOT NULL,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -14,6 +15,10 @@ CREATE TABLE IF NOT EXISTS jobs (
 
     CONSTRAINT uq_jobs_name UNIQUE (name)
 );
+
+-- Case-insensitive uniqueness; the job importer upserts on this (ON CONFLICT (name_key)).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_name_key_unique
+ON jobs (name_key);
 
 CREATE TABLE IF NOT EXISTS job_traits (
     job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
