@@ -61,7 +61,7 @@ public class TraitServiceImpl implements TraitService {
     /** Creates a trait, rejecting duplicate names with 409, then attaches its categories. */
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"traitsById", "traitsAll"}, allEntries = true)
+    @CacheEvict(cacheNames = {"traitsById", "traitsAll", "jobsById", "jobsAll"}, allEntries = true)
     public TraitResponseDto createTrait(CreateTraitRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
         ContentSource contentSource = findContentSource(request.content_source_id());
@@ -103,7 +103,7 @@ public class TraitServiceImpl implements TraitService {
     /** Updates every field of a trait and syncs its categories by only adding/removing what changed. */
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"traitsById", "traitsAll"}, allEntries = true)
+    @CacheEvict(cacheNames = {"traitsById", "traitsAll", "jobsById", "jobsAll"}, allEntries = true)
     public TraitResponseDto updateTrait(String id, CreateTraitRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
         UUID traitId = parseUuid(id, "trait");
@@ -145,7 +145,7 @@ public class TraitServiceImpl implements TraitService {
     /** Deletes a trait; its category links are removed by cascade/orphan removal. */
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"traitsById", "traitsAll"}, allEntries = true)
+    @CacheEvict(cacheNames = {"traitsById", "traitsAll", "jobsById", "jobsAll"}, allEntries = true)
     public String deleteTrait(String id) {
         Trait existingTrait = findTrait(parseUuid(id, "trait"));
         String name = existingTrait.getTraitName();
