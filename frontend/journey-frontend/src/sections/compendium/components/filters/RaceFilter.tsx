@@ -174,8 +174,8 @@ export function RaceFilter({ onApply, initialFilters = null }: RaceFilterProps) 
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-        <form role="search" onSubmit={submitSearch} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-slate-100 px-3 py-2">
+      <div className="flex items-center gap-2">
+        <form role="search" onSubmit={submitSearch} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
           <Search className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
           <input
             type="search"
@@ -201,7 +201,7 @@ export function RaceFilter({ onApply, initialFilters = null }: RaceFilterProps) 
         <button
           type="button"
           onClick={openMenu}
-          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100"
           aria-label={activeCount > 0 ? `Open race filters (${activeCount} active)` : "Open race filters"}
         >
           <SlidersHorizontal className="h-4 w-4" />
@@ -224,7 +224,7 @@ export function RaceFilter({ onApply, initialFilters = null }: RaceFilterProps) 
             aria-modal="true"
             aria-labelledby="race-filter-title"
             onSubmit={submitFilters}
-            className="flex max-h-[90dvh] w-full max-w-xl flex-col rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl"
+            className="flex h-[85dvh] w-full sm:h-auto sm:max-h-[90dvh] max-w-xl flex-col rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 p-4">

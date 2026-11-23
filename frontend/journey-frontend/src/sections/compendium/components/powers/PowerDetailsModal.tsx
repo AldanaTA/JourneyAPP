@@ -53,7 +53,7 @@ export function PowerDetailsModal({ power, isOpen, onClose }: PowerDetailsModalP
         role="dialog"
         aria-modal="true"
         aria-labelledby="power-details-title"
-        className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-700 bg-slate-900 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-slate-100 shadow-2xl sm:rounded-2xl"
+        className="h-[95dvh] w-full sm:h-auto sm:max-h-[90dvh] max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-700 bg-slate-900 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-slate-100 shadow-2xl sm:rounded-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-700 sm:hidden" aria-hidden="true" />
