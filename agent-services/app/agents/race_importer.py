@@ -7,7 +7,7 @@ Racial traits are regular rows in the `traits` table tagged with the `racial`
 category, so they stay searchable in the trait list. They are created while
 importing the race. The import flow is:
 - Split source text into race blocks (name line followed by "Size:")
-- Read the race fields (size, movement, languages, description) deterministically
+- Read the race fields (size or size range, movement, languages, description) deterministically
 - Split each race's "Traits:" section into trait blocks (reuses trait_importer)
 - Link traits that already exist in the `traits` table by name
   (optionally overwrite them with the race's version)
@@ -70,12 +70,50 @@ DEFAULT_MOVEMENT = 30
 DEFAULT_LANGUAGES = "Common"
 
 
+SIZE_ORDER = ["T", "S", "M", "L", "H", "C"]
+
+# Separators allowed between the two ends of a size range: "S - M", "S-M", "S to M", "S/M", "S or M".
+SIZE_RANGE_SEPARATOR = re.compile(r"\s*(?:-|\u2013|\u2014|/|\bto\b|\bor\b)\s*", re.IGNORECASE)
+
+
 def parse_size(value: str | None) -> str | None:
     """Reads the first word of a size value, e.g. "M", "Medium", or "Medium (5ft tall)"."""
     if not value:
         return None
     match = re.match(r"\s*([A-Za-z]+)", value)
     return SIZE_LOOKUP.get(match.group(1).lower()) if match else None
+
+
+def parse_size_range(value: str | None) -> tuple[str | None, str | None, list[str]]:
+    """
+    Parses a size or size range into (min_size, max_size, warnings).
+
+    "M" -> ("M", None); "S - M" / "Small to Medium" -> ("S", "M").
+    max_size is None when no range is given or both ends are the same.
+    A reversed range ("L - S") is swapped and reported as a warning.
+    min_size is None when the value cannot be parsed.
+    """
+    if not value:
+        return None, None, []
+
+    # Ignore parenthetical notes such as "Medium (5-6ft tall)" so their hyphens are not read as a range.
+    cleaned = re.sub(r"\([^)]*\)", "", value).strip()
+    parts = SIZE_RANGE_SEPARATOR.split(cleaned, maxsplit=1)
+
+    min_size = parse_size(parts[0])
+    if len(parts) == 1 or min_size is None:
+        return min_size, None, []
+
+    max_size = parse_size(parts[1])
+    if max_size is None:
+        return None, None, []
+
+    warnings: list[str] = []
+    if SIZE_ORDER.index(max_size) < SIZE_ORDER.index(min_size):
+        warnings.append(f"Size range {value!r} is reversed; stored as {max_size} - {min_size}.")
+        min_size, max_size = max_size, min_size
+
+    return min_size, (max_size if max_size != min_size else None), warnings
 
 
 # ----------------------------
@@ -95,7 +133,9 @@ class RaceRow(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     race_name: str = Field(min_length=1)
-    race_size: RaceSize
+    min_race_size: RaceSize
+    # Set only when the race spans a range of sizes (e.g. S - M).
+    max_race_size: RaceSize | None = None
     movement: int = Field(ge=0)
     languages: str = Field(min_length=1)
     race_description: str | None = None
@@ -150,7 +190,7 @@ class RaceBlock:
 
 RACE_NAME_LABEL = re.compile(r"(?i)^race(?:\s+name)?\s*:\s*(.*)$")
 # A race header's Size value is short ("M", "Medium"); long values are prose that happens to start with "Size:".
-RACE_SIZE_LINE = re.compile(r"(?i)^size\s*:\s*\S.{0,24}$")
+RACE_SIZE_LINE = re.compile(r"(?i)^size\s*:\s*\S.{0,39}$")
 RACE_FIELD_LABEL = re.compile(
     r"(?i)^(size|movement|speed|languages?|description|race\s+description)\s*:\s*(.*)$"
 )
@@ -282,10 +322,12 @@ def parse_race_fields(block: RaceBlock) -> tuple[dict[str, Any], list[str], list
     if not block.name:
         errors.append("Missing race name.")
 
-    size = parse_size(block.size_raw)
-    if size is None:
+    min_size, max_size, size_warnings = parse_size_range(block.size_raw)
+    warnings.extend(size_warnings)
+    if min_size is None:
         errors.append(
-            f"Size must be one of T, S, M, L, H, C (or Tiny ... Colossal), got: {block.size_raw!r}."
+            "Size must be one of T, S, M, L, H, C (or Tiny ... Colossal), optionally as a range "
+            f"like 'S - M', got: {block.size_raw!r}."
         )
 
     movement = DEFAULT_MOVEMENT
@@ -314,7 +356,8 @@ def parse_race_fields(block: RaceBlock) -> tuple[dict[str, Any], list[str], list
 
     fields = {
         "race_name": block.name,
-        "race_size": size,
+        "min_race_size": min_size,
+        "max_race_size": max_size,
         "movement": movement,
         "languages": languages,
         "race_description": block.description,
@@ -529,11 +572,12 @@ def extract_races_with_agent(
 # ----------------------------
 
 UPSERT_RACE_SQL = """
-INSERT INTO races (source_id, race_name, race_size, movement, languages, race_description)
+INSERT INTO races (source_id, race_name, min_race_size, max_race_size, movement, languages, race_description)
 VALUES (
     %(source_id)s,
     %(race_name)s,
-    %(race_size)s::size,
+    %(min_race_size)s::size,
+    %(max_race_size)s::size,
     %(movement)s,
     %(languages)s,
     %(race_description)s
@@ -542,7 +586,8 @@ ON CONFLICT (name_key)
 DO UPDATE SET
     source_id = EXCLUDED.source_id,
     race_name = EXCLUDED.race_name,
-    race_size = EXCLUDED.race_size,
+    min_race_size = EXCLUDED.min_race_size,
+    max_race_size = EXCLUDED.max_race_size,
     movement = EXCLUDED.movement,
     languages = EXCLUDED.languages,
     race_description = EXCLUDED.race_description,

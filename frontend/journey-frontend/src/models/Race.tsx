@@ -7,7 +7,10 @@ export type RaceSize = "T" | "S" | "M" | "L" | "H" | "C";
 export interface Race {
   id: string;
   raceName: string;
-  raceSize: RaceSize;
+  /** The race's size, or the smallest size of its range. */
+  minRaceSize: RaceSize;
+  /** The largest size of the race's range; null when the race has a single size. */
+  maxRaceSize: RaceSize | null;
   /** Base movement in feet. */
   movement: number;
   languages: string;

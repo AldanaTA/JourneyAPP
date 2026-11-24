@@ -1,6 +1,6 @@
 import { memo } from "react";
 import type { Race } from "../../../../models/Race";
-import { formatRaceMovement, formatRaceSize, formatRaceTraitCount } from "./raceFormatters";
+import { formatRaceMovement, formatRaceSizeRange, formatRaceTraitCount } from "./raceFormatters";
 
 interface RaceCardProps {
   race: Race;
@@ -29,7 +29,7 @@ export const RaceCard = memo(function RaceCard({ race, onViewDetails }: RaceCard
           <h3 className="truncate text-lg font-semibold text-white">{race.raceName}</h3>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-300">
             <span className="rounded-full border border-violet-500/60 bg-violet-500/20 px-2 py-1 font-medium text-violet-100">
-              {formatRaceSize(race.raceSize)}
+              {formatRaceSizeRange(race)}
             </span>
             <span className="rounded-full bg-slate-800 px-2 py-1">Move {formatRaceMovement(race)}</span>
             <span className="rounded-full bg-slate-800 px-2 py-1">{formatRaceTraitCount(race)}</span>

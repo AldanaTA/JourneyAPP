@@ -12,12 +12,15 @@ import jakarta.validation.constraints.NotNull;
  * Request body used to create or fully update a race.
  * Field names use snake_case to match {@code CreateJobRequest} and the database columns.
  *
- * <p>{@code trait_ids} are existing trait UUIDs, in display order; every linked trait is tagged
+ * <p>{@code min_race_size} is the race's size; set {@code max_race_size} too when the race spans a
+ * range (e.g. S to M). It must not be smaller than {@code min_race_size}, and is stored as null when
+ * equal to it. {@code trait_ids} are existing trait UUIDs, in display order; every linked trait is tagged
  * {@code RACIAL}. {@code movement} defaults to 30 and {@code languages} to "Common" like the columns.</p>
  */
 public record CreateRaceRequest(
     @NotBlank(message = "Race name" + CreateRaceRequest.ERROR_MESSAGE_NOT_BLANK) String race_name,
-    @NotNull(message = "Race size" + CreateRaceRequest.ERROR_MESSAGE_NOT_BLANK) RaceSize race_size,
+    @NotNull(message = "Min race size" + CreateRaceRequest.ERROR_MESSAGE_NOT_BLANK) RaceSize min_race_size,
+    RaceSize max_race_size,
     @Min(0) Integer movement,
     String languages,
     String race_description,

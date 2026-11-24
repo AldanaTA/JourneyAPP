@@ -99,7 +99,7 @@ async def preview_race_import(
     Expected format per race:
 
         Race Name
-        Size: M
+        Size: M        (or a range, e.g. "Size: S - M")
         Movement: 30ft
         Languages: Common and Dwarvish
         Description:

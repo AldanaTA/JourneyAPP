@@ -1,5 +1,6 @@
 package com.journey.api_rest_v1.specification;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import com.journey.api_rest_v1.domain.traits.Trait;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 
@@ -31,12 +33,35 @@ public final class RaceSpecifications {
         return (root, query, cb) -> cb.conjunction();
     }
 
-    /** Matches races whose size is any of the given sizes. */
+    /**
+     * Matches races that can be any of the given sizes: a single-size race (no max) must equal one of them,
+     * and a ranged race matches when a given size lies between its min and max.
+     *
+     * <p>Sizes are compared with explicit {@code IN} lists built from {@link RaceSize} order, because the
+     * enum is bound as its label and a SQL {@code <}/{@code >} on labels would compare alphabetically.</p>
+     */
     public static Specification<Race> withSizes(List<RaceSize> sizes) {
         if (sizes == null || sizes.isEmpty()) {
             return all();
         }
-        return (root, query, cb) -> root.get("raceSize").in(sizes);
+
+        return (root, query, cb) -> {
+            Path<RaceSize> minSize = root.get("minRaceSize");
+            Path<RaceSize> maxSize = root.get("maxRaceSize");
+
+            Predicate[] matches = sizes.stream().distinct().map(size -> {
+                List<RaceSize> atMost = Arrays.stream(RaceSize.values())
+                        .filter(other -> other.ordinal() <= size.ordinal()).toList();
+                List<RaceSize> atLeast = Arrays.stream(RaceSize.values())
+                        .filter(other -> other.ordinal() >= size.ordinal()).toList();
+
+                Predicate singleSize = cb.and(cb.isNull(maxSize), cb.equal(minSize, size));
+                Predicate withinRange = cb.and(minSize.in(atMost), maxSize.in(atLeast));
+                return cb.or(singleSize, withinRange);
+            }).toArray(Predicate[]::new);
+
+            return cb.or(matches);
+        };
     }
 
     /** Compares movement against a value using lte, lt, eq, gt or gte (defaults to lte). */

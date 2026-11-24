@@ -7,6 +7,8 @@ import com.journey.api_rest_v1.domain.races.RaceSize;
 /**
  * Request body for the race filter endpoint.
  * Every field is optional; null values are ignored so the client only sends what the user set.
+ * {@code sizes} matches races that can be any of the given sizes: a single-size race must equal one of
+ * them, and a ranged race (e.g. S - M) matches any size inside its range.
  * The movement filter is paired with an operator (lte, lt, eq, gt, gte) that defaults to lte.
  */
 public record RaceFilterRequest(

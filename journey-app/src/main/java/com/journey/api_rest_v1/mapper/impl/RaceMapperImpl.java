@@ -31,7 +31,8 @@ public class RaceMapperImpl implements RaceMapper {
         return new RaceResponseDto(
             race.getId() == null ? null : race.getId().toString(),
             race.getRaceName(),
-            race.getRaceSize(),
+            race.getMinRaceSize(),
+            race.getMaxRaceSize(),
             race.getMovement(),
             race.getLanguages(),
             race.getRaceDescription(),
@@ -48,7 +49,8 @@ public class RaceMapperImpl implements RaceMapper {
     public CreateRaceRequest CreateRequest(CreateRaceRequest request) {
         return new CreateRaceRequest(
             request.race_name(),
-            request.race_size(),
+            request.min_race_size(),
+            request.max_race_size(),
             request.movement(),
             request.languages(),
             request.race_description(),

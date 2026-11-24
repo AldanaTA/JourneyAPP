@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Race } from "../../../../models/Race";
 import { TraitAccordionItem } from "../traits/TraitAccordionItem";
-import { formatRaceMovement, formatRaceSize, formatRaceTraitCount } from "./raceFormatters";
+import { formatRaceMovement, formatRaceSizeRange, formatRaceTraitCount } from "./raceFormatters";
 
 interface RaceDetailsModalProps {
   race: Race;
@@ -70,7 +70,7 @@ export function RaceDetailsModal({ race, isOpen, onClose }: RaceDetailsModalProp
 
         <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-slate-300">
           <span className="rounded-full border border-violet-500/60 bg-violet-500/20 px-2 py-1 font-medium text-violet-100">
-            {formatRaceSize(race.raceSize)}
+            {formatRaceSizeRange(race)}
           </span>
           <span className="rounded-full bg-slate-800 px-2 py-1">Move {formatRaceMovement(race)}</span>
           <span className="rounded-full bg-slate-800 px-2 py-1">{formatRaceTraitCount(race)}</span>

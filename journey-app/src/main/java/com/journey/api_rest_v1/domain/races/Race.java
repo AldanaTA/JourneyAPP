@@ -47,8 +47,13 @@ public class Race {
 
     // Stored in the Postgres "size" enum; the JDBC stringtype=unspecified setting lets the label bind to it.
     @Enumerated(EnumType.STRING)
-    @Column(name = "race_size", nullable = false)
-    private RaceSize raceSize;
+    @Column(name = "min_race_size", nullable = false)
+    private RaceSize minRaceSize;
+
+    // Upper end of a size range (e.g. S - M); null when the race has a single size.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "max_race_size")
+    private RaceSize maxRaceSize;
 
     @Column(name = "movement", nullable = false)
     private Integer movement;
@@ -86,12 +91,14 @@ public class Race {
     }
 
     /** Creates a fully populated race; a null trait list is replaced with an empty one. */
-    public Race(UUID id, String raceName, RaceSize raceSize, Integer movement, String languages,
+    public Race(UUID id, String raceName, RaceSize minRaceSize, RaceSize maxRaceSize, Integer movement,
+            String languages,
             String raceDescription, List<RaceTraits> traits, ContentSource source, OffsetDateTime createdAt,
             OffsetDateTime updatedAt) {
         this.id = id;
         this.raceName = raceName;
-        this.raceSize = raceSize;
+        this.minRaceSize = minRaceSize;
+        this.maxRaceSize = maxRaceSize;
         this.movement = movement;
         this.languages = languages;
         this.raceDescription = raceDescription;
@@ -126,14 +133,24 @@ public class Race {
         return nameKey;
     }
 
-    /** Returns the race's size. */
-    public RaceSize getRaceSize() {
-        return raceSize;
+    /** Returns the race's size, or the smallest size of its range. */
+    public RaceSize getMinRaceSize() {
+        return minRaceSize;
     }
 
-    /** Sets the race's size. */
-    public void setRaceSize(RaceSize raceSize) {
-        this.raceSize = raceSize;
+    /** Sets the race's size, or the smallest size of its range. */
+    public void setMinRaceSize(RaceSize minRaceSize) {
+        this.minRaceSize = minRaceSize;
+    }
+
+    /** Returns the largest size of the race's range, or null when it has a single size. */
+    public RaceSize getMaxRaceSize() {
+        return maxRaceSize;
+    }
+
+    /** Sets the largest size of the race's range; null means the race has a single size. */
+    public void setMaxRaceSize(RaceSize maxRaceSize) {
+        this.maxRaceSize = maxRaceSize;
     }
 
     /** Returns the race's base movement in feet. */

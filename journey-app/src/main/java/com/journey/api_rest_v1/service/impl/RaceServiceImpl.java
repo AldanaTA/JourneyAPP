@@ -27,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.journey.api_rest_v1.domain.content_source.ContentSource;
 import com.journey.api_rest_v1.domain.races.Race;
+import com.journey.api_rest_v1.domain.races.RaceSize;
 import com.journey.api_rest_v1.domain.races.RaceTraits;
 import com.journey.api_rest_v1.domain.races.RaceTraitsId;
 import com.journey.api_rest_v1.domain.traits.Trait;
@@ -96,7 +97,8 @@ public class RaceServiceImpl implements RaceService {
         Race race = new Race(
                 null,
                 request.race_name().trim(),
-                request.race_size(),
+                request.min_race_size(),
+                validMaxSize(request.min_race_size(), request.max_race_size()),
                 orDefault(request.movement()),
                 orCommon(request.languages()),
                 blankToNull(request.race_description()),
@@ -142,7 +144,8 @@ public class RaceServiceImpl implements RaceService {
                 .toList();
 
         existingRace.setRaceName(request.race_name().trim());
-        existingRace.setRaceSize(request.race_size());
+        existingRace.setMinRaceSize(request.min_race_size());
+        existingRace.setMaxRaceSize(validMaxSize(request.min_race_size(), request.max_race_size()));
         existingRace.setMovement(orDefault(request.movement()));
         existingRace.setLanguages(orCommon(request.languages()));
         existingRace.setRaceDescription(blankToNull(request.race_description()));
@@ -323,6 +326,21 @@ public class RaceServiceImpl implements RaceService {
     /** Normalizes a name the same way the database computes {@code races.name_key} (trimmed, lowercase). */
     private static String normalizeName(String name) {
         return name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Returns the upper end of a size range: null when absent or equal to the minimum (a single size),
+     * and a 400 when it is smaller than the minimum.
+     */
+    private static RaceSize validMaxSize(RaceSize minSize, RaceSize maxSize) {
+        if (maxSize == null || maxSize == minSize) {
+            return null;
+        }
+        if (maxSize.ordinal() < minSize.ordinal()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Max race size " + maxSize + " must not be smaller than min race size " + minSize);
+        }
+        return maxSize;
     }
 
     /** Returns the movement, or 30 when it is null (matches the column default). */
