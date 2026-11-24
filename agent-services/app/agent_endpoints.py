@@ -12,6 +12,7 @@ from routers.trait_routes import router as trait_router
 from routers.job_routes import router as job_router
 from routers.race_routes import router as race_router
 from routers.item_routes import router as item_router
+from routers.creature_routes import router as creature_router
 
 load_dotenv()
 
@@ -53,3 +54,4 @@ app.include_router(trait_router)
 app.include_router(job_router)
 app.include_router(race_router)
 app.include_router(item_router)
+app.include_router(creature_router)

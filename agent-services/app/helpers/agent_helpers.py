@@ -33,8 +33,8 @@ def normalize_text(text: str) -> str:
 
 
 def read_txt(path: Path) -> str:
-    """Read plain text from a .txt file."""
-    return path.read_text(encoding="utf-8", errors="replace")
+    """Read plain text from a .txt file (utf-8-sig drops the byte-order mark Windows editors add)."""
+    return path.read_text(encoding="utf-8-sig", errors="replace")
 
 
 def read_docx(path: Path) -> str:
