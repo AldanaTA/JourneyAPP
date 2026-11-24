@@ -280,14 +280,15 @@ def parse_race_block(index: int, block_lines: list[str]) -> RaceBlock:
         if current and stripped:
             values[current].append(stripped)
 
-    def joined(key: str) -> str | None:
-        text = " ".join(values.get(key, [])).strip()
+    def joined(key: str, separator: str = " ") -> str | None:
+        text = separator.join(values.get(key, [])).strip()
         return text or None
 
     block.size_raw = joined("size")
     block.movement_raw = joined("movement")
     block.languages_raw = joined("languages")
-    block.description = joined("description")
+    # The description keeps its line breaks; the short fields above are parsed, so they join with spaces.
+    block.description = joined("description", "\n")
 
     if traits_start is not None:
         block.has_traits_header = True

@@ -28,6 +28,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from helpers.agent_helpers import (
     batch_by_char_count,
+    extract_labeled_sections,
     extract_text,
     get_max_workers,
     normalize_text,
@@ -784,6 +785,48 @@ def dedupe_traits(result: AgentTraitImportResult) -> tuple[AgentTraitImportResul
     )
 
 
+# Every field label a trait block can contain; text fields run until the next one.
+TRAIT_FIELD_LABELS = [
+    "LVL",
+    "Purchase Cost",
+    "LVL UP Cost",
+    "Description",
+    "Uses or Resource Cost",
+    "Uses",
+    "Resource Cost",
+    "Cost",
+    "Effect",
+    "LVL UP",
+]
+
+
+def keep_source_formatting(result: AgentTraitImportResult, blocks: list[TraitBlock]) -> AgentTraitImportResult:
+    """
+    Replace the agent's description/effect/LVL UP text with the text exactly as written in the source
+    block, so line breaks (e.g. option lists such as Battle Tactics' Disarm/Feint/Goad/Trip) survive.
+    The agent tends to flatten text into one paragraph; it is still used for the numeric fields and
+    categories. Traits whose block cannot be found keep the agent's text.
+    """
+    blocks_by_name = {block.name.strip().lower(): block for block in blocks}
+    traits: list[TraitRow] = []
+
+    for trait in result.valid_traits:
+        block = blocks_by_name.get(trait.trait_name.strip().lower())
+        if block is None:
+            traits.append(trait)
+            continue
+
+        sections = extract_labeled_sections(block.text, TRAIT_FIELD_LABELS)
+        updates: dict[str, str] = {}
+        for label, field in (("description", "trait_desc"), ("effect", "trait_effect"), ("lvl up", "lvl_up_effect")):
+            text = (sections.get(label) or [""])[0]
+            if text and text.strip().lower() not in MISSING_TEXT_VALUES:
+                updates[field] = text
+        traits.append(trait.model_copy(update=updates) if updates else trait)
+
+    return AgentTraitImportResult(valid_traits=traits, invalid_traits=result.invalid_traits)
+
+
 def extract_traits_with_agent(
     raw_text: str,
     model: str,
@@ -850,7 +893,7 @@ def extract_traits_with_agent(
 
     metadata["duplicate_count"] = duplicate_count
 
-    return deduped_result, metadata
+    return keep_source_formatting(deduped_result, blocks_for_agent), metadata
 
 
 # ----------------------------

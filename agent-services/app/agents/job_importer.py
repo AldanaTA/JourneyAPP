@@ -267,7 +267,8 @@ def parse_job_block(index: int, block_lines: list[str]) -> JobBlock:
         if in_description and stripped:
             description_parts.append(stripped)
 
-    description = " ".join(description_parts).strip() or None
+    # Keep the source's line breaks (paragraphs).
+    description = "\n".join(description_parts).strip() or None
 
     trait_blocks: list[TraitBlock] = []
     if traits_start is not None:

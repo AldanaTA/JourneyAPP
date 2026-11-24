@@ -37,20 +37,86 @@ def read_txt(path: Path) -> str:
     return path.read_text(encoding="utf-8-sig", errors="replace")
 
 
+# Field labels and section headings used by the importers. Word list formatting on these lines is
+# ignored so the importers still recognise them (see read_docx).
+KNOWN_FIELD_LABELS = [
+    # Shared / traits / powers
+    "Name", "Type", "Description", "Effect", "Cost", "Uses", "Uses or Resource Cost", "Resource Cost",
+    "LVL", "LVL UP", "LVL UP Cost", "Purchase Cost", "Empower", "Components", "Material Components",
+    "Range", "Area", "Duration",
+    # Jobs / races
+    "Job", "Job Name", "Job Description", "Race", "Race Name", "Race Description", "Traits", "Job Traits",
+    "Racial Traits", "Race Traits", "Size", "Movement", "Speed", "Languages", "Language",
+    # Items
+    "Rarity", "Stackable", "Charges", "Attunement", "Strength Req", "Weapon Type", "Weapon Properties",
+    "Damage", "Mag", "Skills", "Skill Bonus", "Sessions", "Magic Item Effect", "Armor Effect",
+    "Weapon Effect", "Defense",
+    # Creatures
+    "Threat LVL", "Lore", "Combat", "Augments", "Abilities", "Immune", "Resistant", "Weak", "Passives",
+    "Triggers", "Declared", "HP", "WP", "MP", "EP", "PRIO", "MVM", "MV", "PD", "MD",
+]
+
+_FIELD_LABEL_LINE = re.compile(
+    r"(?i)^\s*("
+    + "|".join(re.escape(label) for label in sorted(KNOWN_FIELD_LABELS, key=len, reverse=True))
+    + r")\s*(?::|$)"
+)
+
+
+def is_field_label_line(text: str) -> bool:
+    """True for importer field labels ("Effect: ...") and section headings ("Lore", "Passives:")."""
+    return bool(_FIELD_LABEL_LINE.match(text))
+
+
+def _looks_like_block_name(text: str, next_text: str | None) -> bool:
+    """A short title line (no colon, not a sentence) directly followed by a field label."""
+    return (
+        next_text is not None
+        and ":" not in text
+        and not text.rstrip().endswith((".", "!", "?"))
+        and len(text.split()) <= 8
+        and is_field_label_line(next_text)
+    )
+
+
+def _list_level(paragraph: Any) -> int | None:
+    """Indent level of a Word list (bullet or numbered) paragraph, or None if it is not in a list."""
+    ppr = paragraph._p.pPr
+    if ppr is not None and ppr.numPr is not None:
+        ilvl = ppr.numPr.ilvl
+        return int(ilvl.val) if ilvl is not None and ilvl.val is not None else 0
+    style = paragraph.style.name if paragraph.style is not None else ""
+    if style.lower().startswith("list"):
+        # Built-in styles carry the level in their name: "List Bullet 2" is the second level.
+        match = re.search(r"(\d+)\s*$", style)
+        return int(match.group(1)) - 1 if match else 0
+    return None
+
+
 def read_docx(path: Path) -> str:
-    """Extract text from a .docx file, including basic table contents."""
+    """
+    Extract text from a .docx file, including basic table contents.
+
+    Word list items (bullets and numbering) are prefixed with "• " (indented by list level) so option
+    lists stay readable after import. Lines the importers rely on are left unprefixed: field labels,
+    section headings, and block names (a short title line followed by a field label).
+    """
     try:
         from docx import Document
     except ImportError as exc:
         raise RuntimeError("Missing dependency. Install with: pip install python-docx") from exc
 
     doc = Document(path)
+    paragraphs = [(paragraph, paragraph.text.strip()) for paragraph in doc.paragraphs]
+    paragraphs = [(paragraph, text) for paragraph, text in paragraphs if text]
     chunks: list[str] = []
 
-    for paragraph in doc.paragraphs:
-        text = paragraph.text.strip()
-        if text:
-            chunks.append(text)
+    for index, (paragraph, text) in enumerate(paragraphs):
+        level = _list_level(paragraph)
+        next_text = paragraphs[index + 1][1] if index + 1 < len(paragraphs) else None
+        if level is not None and not is_field_label_line(text) and not _looks_like_block_name(text, next_text):
+            text = "  " * level + "• " + text
+        chunks.append(text)
 
     # Also read tables, because imported content may be formatted as tables.
     for table in doc.tables:
@@ -249,3 +315,40 @@ def get_max_workers(
         workers = cpu_count * 4
 
     return max(min_workers, min(workers, max_workers))
+
+def extract_labeled_sections(block_text: str, labels: Sequence[str]) -> dict[str, list[str]]:
+    """
+    Read labelled fields from a content block, keeping each field's text exactly as written,
+    line breaks included.
+
+    A field starts at a line beginning with one of `labels` followed by ":" (case-insensitive) and runs
+    until the next such line. Lines that look like "Name: text" but whose name is not in `labels`
+    (e.g. trait options such as "Disarm: ...") stay inside the current field. The block's first line
+    (its name) is skipped. Blank lines inside a field are kept as a single paragraph break.
+
+    Returns {label lowercased: [text of each occurrence]}; a label can occur more than once.
+    """
+    # Longest labels first so "LVL UP Cost" wins over "LVL UP", which wins over "LVL".
+    ordered = sorted({label.strip().rstrip(":") for label in labels}, key=len, reverse=True)
+    pattern = re.compile(
+        r"(?i)^\s*(" + "|".join(re.escape(label) for label in ordered) + r")\s*:\s*(.*)$"
+    )
+
+    sections: dict[str, list[str]] = {}
+    current: list[str] | None = None
+
+    for line in block_text.split("\n")[1:]:
+        match = pattern.match(line)
+        if match:
+            name = re.sub(r"\s+", " ", match.group(1).lower())
+            current = [match.group(2).rstrip()] if match.group(2).strip() else []
+            sections.setdefault(name, []).append(current)  # type: ignore[arg-type]
+            continue
+        if current is not None:
+            current.append(line.rstrip())
+
+    def finish(lines: list[str]) -> str:
+        text = "\n".join(line.strip() for line in lines).strip()
+        return re.sub(r"\n{3,}", "\n\n", text)
+
+    return {name: [finish(lines) for lines in occurrences] for name, occurrences in sections.items()}  # type: ignore[arg-type]

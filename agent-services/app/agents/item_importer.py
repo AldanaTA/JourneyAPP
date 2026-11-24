@@ -271,7 +271,8 @@ def split_item_blocks(raw_text: str) -> list[ItemBlock]:
                 break
 
             if last_label in LONG_TEXT_FIELDS:
-                block.fields[last_label] = f"{block.fields[last_label]} {current}".strip()
+                # Keep the source's line breaks (option lists, paragraphs).
+                block.fields[last_label] = f"{block.fields[last_label]}\n{current}".strip()
                 block_lines.append(current)
                 j += 1
                 continue

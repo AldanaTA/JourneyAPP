@@ -262,8 +262,8 @@ def read_block(lines: list[str]) -> CreatureBlock:
                 block.header.update(labels)
                 last_header_label = list(labels)[-1]
             elif last_header_label == "description":
-                # A description that wraps onto the next line.
-                block.header["description"] = f"{block.header['description']} {line}".strip()
+                # A description that continues onto the next line (line breaks are kept).
+                block.header["description"] = f"{block.header['description']}\n{line}".strip()
             else:
                 block.stray_lines.append(line)
 
@@ -432,7 +432,8 @@ def parse_ability(
         else:
             effect_parts.append(line)
 
-    effect = " ".join(effect_parts).strip()
+    # Keep the source's line breaks so option lists stay readable.
+    effect = "\n".join(effect_parts).strip()
     trait = power = None
     lvl = None
 
@@ -583,7 +584,7 @@ def build_creature(block: CreatureBlock, refs: ReferenceData) -> CreatureRow | I
         max_size=max_size,
         description=text_or_none(header.get("description")),
         languages=text_or_none(header.get("languages")),
-        lore=" ".join(block.lore).strip() or None,
+        lore="\n".join(block.lore).strip() or None,
         movement=movement,
         skills=skills,
         augments=augments,

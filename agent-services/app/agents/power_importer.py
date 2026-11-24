@@ -32,6 +32,7 @@ from pydantic import (
 
 from helpers.agent_helpers import (
     batch_by_char_count,
+    extract_labeled_sections,
     extract_text,
     get_max_workers,
     normalize_text,
@@ -953,6 +954,65 @@ def dedupe_powers(result: AgentImportResult) -> tuple[AgentImportResult, int]:
     )
 
 
+# Every field label a power block can contain; text fields run until the next one.
+POWER_FIELD_LABELS = [
+    "LVL",
+    "Type",
+    "Cost",
+    "Material Components",
+    "Components",
+    "Range",
+    "Area",
+    "Duration",
+    "Effect",
+    "Empower",
+    "LVL UP",
+]
+
+POWER_MISSING_TEXT = {"", "-", "none", "n/a", "null"}
+
+
+def keep_source_formatting(result: AgentImportResult, blocks: list[PowerBlock]) -> AgentImportResult:
+    """
+    Replace the agent's effect/empower/LVL UP text with the text exactly as written in the source block,
+    so line breaks and option lists survive (the agent tends to flatten them). The agent is still used for
+    costs, components, and categories. Two agent rules are kept:
+    - an "Alternate casting: ..." sentence it adds to the start of the effect is preserved
+    - a mistaken second "LVL:" field after Empower is read as LVL UP
+    """
+    blocks_by_name = {block.name.strip().lower(): block for block in blocks}
+    powers: list[PowerRow] = []
+
+    for power in result.valid_powers:
+        block = blocks_by_name.get(power.name.strip().lower())
+        if block is None:
+            powers.append(power)
+            continue
+
+        sections = extract_labeled_sections(block.text, POWER_FIELD_LABELS)
+        updates: dict[str, Any] = {}
+
+        effect = (sections.get("effect") or [""])[0]
+        if effect:
+            prefix = ""
+            if power.effect.startswith("Alternate casting:") and not effect.startswith("Alternate casting:"):
+                prefix = power.effect.split(".", 1)[0] + ".\n"
+            updates["effect"] = prefix + effect
+
+        empower = (sections.get("empower") or [""])[0]
+        if empower and empower.lower() not in POWER_MISSING_TEXT:
+            updates["empower_effect"] = empower
+
+        lvl_up_values = sections.get("lvl up") or (sections.get("lvl") or [])[1:]
+        lvl_up = lvl_up_values[0] if lvl_up_values else ""
+        if lvl_up and lvl_up.lower() not in POWER_MISSING_TEXT:
+            updates["lvl_up_effect"] = lvl_up
+
+        powers.append(power.model_copy(update=updates) if updates else power)
+
+    return AgentImportResult(valid_powers=powers, invalid_powers=result.invalid_powers)
+
+
 def extract_powers_with_agent(
     raw_text: str,
     model: str,
@@ -1019,7 +1079,7 @@ def extract_powers_with_agent(
 
     metadata["duplicate_count"] = duplicate_count
 
-    return deduped_result, metadata
+    return keep_source_formatting(deduped_result, blocks_for_agent), metadata
 
 
 # ----------------------------
