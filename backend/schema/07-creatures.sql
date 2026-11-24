@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 --   Name / Threat LVL / Type / Size / Description / Languages
 --   Lore
 --   Combat: HP, WP, MP, EP, PRIO, MVM, PD, MD
---   Skills, Augments (Immune / Resistant / Weak)
+--   Skills, Augments (Immune / Resistant / Weak to damage types or status conditions)
 --   Abilities: Passives / Triggers / Declared (attacks and power casts are declared)
 -- Threat points are only used to build a creature and are not stored.
 
@@ -147,24 +147,29 @@ ON creatures (creature_type_id);
 CREATE INDEX IF NOT EXISTS idx_creatures_threat_lvl
 ON creatures (threat_lvl);
 
--- Immunities, resistances, and weaknesses to damage types or status conditions.
+-- Immunities, resistances, and weaknesses. Each one targets exactly one damage type or status condition.
 CREATE TABLE IF NOT EXISTS creature_augments (
     creature_id UUID NOT NULL REFERENCES creatures(id) ON DELETE CASCADE,
     kind augment_kind NOT NULL,
 
-    -- As written in the stat block ("Fire", "Blind", ...).
+    -- The name of the damage type or status condition ("Fire", "Blinded", ...), kept for display and as
+    -- part of the key.
     target TEXT NOT NULL,
-    -- Set when the target is a damage type, so creatures can be filtered by it.
     damage_type_id UUID REFERENCES damage_types(id),
+    status_condition_id UUID REFERENCES status_conditions(id),
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
-    PRIMARY KEY (creature_id, kind, target)
+    PRIMARY KEY (creature_id, kind, target),
+    CONSTRAINT chk_creature_augments_one_target CHECK (num_nonnulls(damage_type_id, status_condition_id) = 1)
 );
 
 CREATE INDEX IF NOT EXISTS idx_creature_augments_damage_type_id
 ON creature_augments (damage_type_id);
+
+CREATE INDEX IF NOT EXISTS idx_creature_augments_status_condition_id
+ON creature_augments (status_condition_id);
 
 -- Passives, triggers, and declared abilities other than attacks.
 -- effect is the creature's own (condensed) text. trait_id / power_id link to the full game trait or

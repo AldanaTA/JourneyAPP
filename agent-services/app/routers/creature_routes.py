@@ -96,8 +96,8 @@ async def preview_creature_import(
         Darkness: The creature casts Darkness at LVL 7. 31MP 3TP        (a power cast)
 
     Abilities whose names match a game trait or power are linked to it; near misses get a
-    "did you mean ...?" warning. Unknown creature types (per source), damage types, and weapon
-    properties make a creature invalid.
+    "did you mean ...?" warning. Unknown creature types (per source), augment targets (each must be a
+    damage type or status condition), attack damage types, and weapon properties make a creature invalid.
 
     Default:
     - Extract creatures and return valid_creatures (with warnings) and invalid_creatures

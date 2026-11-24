@@ -82,7 +82,7 @@ public class RaceServiceImpl implements RaceService {
     /** Creates a race, rejecting duplicate names with 409, then links its traits. */
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"racesById", "racesAll", "traitsById", "traitsAll", "jobsById", "jobsAll"},
+    @CacheEvict(cacheNames = {"racesById", "racesAll", "traitsById", "traitsAll", "jobsById", "jobsAll", "creaturesById", "creaturesAll"},
             allEntries = true)
     public RaceResponseDto createRace(CreateRaceRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
@@ -123,7 +123,7 @@ public class RaceServiceImpl implements RaceService {
      */
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"racesById", "racesAll", "traitsById", "traitsAll", "jobsById", "jobsAll"},
+    @CacheEvict(cacheNames = {"racesById", "racesAll", "traitsById", "traitsAll", "jobsById", "jobsAll", "creaturesById", "creaturesAll"},
             allEntries = true)
     public RaceResponseDto updateRace(String id, CreateRaceRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
@@ -164,7 +164,7 @@ public class RaceServiceImpl implements RaceService {
     /** Deletes a race; its trait links are removed by cascade, and traits no other race uses lose RACIAL. */
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"racesById", "racesAll", "traitsById", "traitsAll", "jobsById", "jobsAll"},
+    @CacheEvict(cacheNames = {"racesById", "racesAll", "traitsById", "traitsAll", "jobsById", "jobsAll", "creaturesById", "creaturesAll"},
             allEntries = true)
     public String deleteRace(String id) {
         UUID raceId = parseUuid(id, "race");

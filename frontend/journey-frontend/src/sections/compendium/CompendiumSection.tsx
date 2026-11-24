@@ -4,6 +4,7 @@ import type { TraitFilterRequest } from "@/apis/traitApi";
 import type { JobFilterRequest } from "@/apis/jobApi";
 import type { RaceFilterRequest } from "@/apis/raceApi";
 import type { ItemFilterRequest } from "@/apis/itemApi";
+import type { CreatureFilterRequest } from "@/apis/creatureApi";
 import { CategorySelector, type CompendiumCategory } from "./components/CategorySelector";
 import { PowerFilter } from "./components/filters/PowerFilter";
 import { TraitFilter } from "./components/filters/TraitFilter";
@@ -25,6 +26,7 @@ function CompendiumSection() {
   const [jobFilters, setJobFilters] = useState<JobFilterRequest | null>(null);
   const [raceFilters, setRaceFilters] = useState<RaceFilterRequest | null>(null);
   const [itemFilters, setItemFilters] = useState<ItemFilterRequest | null>(null);
+  const [creatureFilters, setCreatureFilters] = useState<CreatureFilterRequest | null>(null);
 
   const renderFilter = () => {
     switch (selectedCategory) {
@@ -39,7 +41,7 @@ function CompendiumSection() {
       case "Items":
         return <ItemFilter onApply={setItemFilters} initialFilters={itemFilters} />;
       case "Creatures":
-        return <CreatureFilter />;
+        return <CreatureFilter onApply={setCreatureFilters} initialFilters={creatureFilters} />;
       default:
         return null;
     }
@@ -58,7 +60,7 @@ function CompendiumSection() {
       case "Items":
         return <ItemLoader filters={itemFilters} />;
       case "Creatures":
-        return <CreatureLoader />;
+        return <CreatureLoader filters={creatureFilters} />;
       default:
         return null;
     }

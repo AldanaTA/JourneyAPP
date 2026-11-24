@@ -12,7 +12,8 @@ Flow:
 - Read the header, lore, combat stats, skills, augments, and abilities
 - In Declared, lines with "Damage:" are attacks and "casts <Power> at LVL n" lines are power casts
 - Link abilities to game traits/powers by exact name; warn "did you mean ...?" on near misses
-- Reject unknown creature types (types are per source), damage types, and weapon properties
+- Reject unknown creature types (types are per source), augment targets (damage types or status
+  conditions), attack damage types, and weapon properties
 - Return valid_creatures and invalid_creatures
 - Insert only valid creatures using synchronous psycopg
 """
@@ -57,9 +58,11 @@ class CreatureAugment(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: AugmentKind
+    # Canonical name of the damage type or status condition.
     target: str
-    # Set when the target is a damage type; otherwise it is a status condition.
+    # Exactly one of these is set.
     damage_type: str | None = None
+    status_condition: str | None = None
 
 
 class CreatureAbility(BaseModel):
@@ -142,6 +145,7 @@ class ReferenceData:
     traits: dict[str, str]
     powers: dict[str, str]
     damage_types: dict[str, str]
+    status_conditions: dict[str, str]
     weapon_properties: dict[str, str]
 
 
@@ -159,6 +163,7 @@ def fetch_reference_data(database_url: str, source_id: str) -> ReferenceData:
                 traits=names("SELECT trait_name FROM traits;"),
                 powers=names("SELECT name FROM powers;"),
                 damage_types=names("SELECT name FROM damage_types;"),
+                status_conditions=names("SELECT name FROM status_conditions;"),
                 weapon_properties=names("SELECT name FROM weapon_properties;"),
             )
 
@@ -538,15 +543,20 @@ def build_creature(block: CreatureBlock, refs: ReferenceData) -> CreatureRow | I
             if not target or target.lower() in MISSING_TEXT_VALUES:
                 continue
             damage_type = refs.damage_types.get(key(target))
-            if damage_type is None:
-                suggestion = closest(target, refs.damage_types)
-                if suggestion:
-                    warnings.append(
-                        f"{kind.capitalize()} {target!r} is not a damage type, so it is stored as a status "
-                        f"condition. Did you mean {suggestion!r}?"
-                    )
+            status_condition = None if damage_type else refs.status_conditions.get(key(target))
+            if damage_type is None and status_condition is None:
+                errors.append(
+                    f"{kind.capitalize()} {target!r} is not a damage type or status condition."
+                    + did_you_mean(target, {**refs.damage_types, **refs.status_conditions})
+                )
+                continue
             augments.append(
-                CreatureAugment(kind=kind, target=damage_type or target, damage_type=damage_type)
+                CreatureAugment(
+                    kind=kind,
+                    target=damage_type or status_condition,
+                    damage_type=damage_type,
+                    status_condition=status_condition,
+                )
             )
 
     abilities: list[CreatureAbility] = []
@@ -793,9 +803,10 @@ DELETE_CHILDREN_SQL = [
 ]
 
 INSERT_AUGMENT_SQL = """
-INSERT INTO creature_augments (creature_id, kind, target, damage_type_id)
+INSERT INTO creature_augments (creature_id, kind, target, damage_type_id, status_condition_id)
 VALUES (%(creature_id)s, %(kind)s::augment_kind, %(target)s,
-        (SELECT id FROM damage_types WHERE name_key = LOWER(TRIM(%(damage_type)s))))
+        (SELECT id FROM damage_types WHERE name_key = LOWER(TRIM(%(damage_type)s))),
+        (SELECT id FROM status_conditions WHERE name_key = LOWER(TRIM(%(status_condition)s))))
 ON CONFLICT (creature_id, kind, target) DO NOTHING;
 """
 

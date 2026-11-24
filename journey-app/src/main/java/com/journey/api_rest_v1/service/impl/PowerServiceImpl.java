@@ -63,7 +63,7 @@ public class PowerServiceImpl implements PowerService {
     /** Creates a power, rejecting duplicate names with 409, then attaches its (de-duplicated) categories. */
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"powersById", "powersAll"}, allEntries = true)
+    @CacheEvict(cacheNames = {"powersById", "powersAll", "creaturesById", "creaturesAll"}, allEntries = true)
     public PowerResponseDto createPower(CreatePowerRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
         ContentSource contentSource = findContentSource(request.content_source_id());
@@ -126,7 +126,7 @@ public class PowerServiceImpl implements PowerService {
     /** Updates every field of a power and syncs its categories by only adding/removing what changed. */
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"powersById", "powersAll"}, allEntries = true)
+    @CacheEvict(cacheNames = {"powersById", "powersAll", "creaturesById", "creaturesAll"}, allEntries = true)
     public PowerResponseDto updatePower(String id, CreatePowerRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
         UUID powerId = parseUuid(id, "power");
@@ -177,7 +177,7 @@ public class PowerServiceImpl implements PowerService {
     /** Deletes a power; its category links are removed by cascade/orphan removal. */
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"powersById", "powersAll"}, allEntries = true)
+    @CacheEvict(cacheNames = {"powersById", "powersAll", "creaturesById", "creaturesAll"}, allEntries = true)
     public String deletePower(String id) {
         Power existingPower = findPower(parseUuid(id, "power"));
         String name = existingPower.getName();
