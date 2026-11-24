@@ -1,18 +1,5 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'size') THEN
-        CREATE TYPE size AS ENUM (
-            'T',
-            'S',
-            'M',
-            'L',
-            'H',
-            'C'
-        );
-    END IF;
-END $$;
 
 CREATE TABLE IF NOT EXISTS races (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
