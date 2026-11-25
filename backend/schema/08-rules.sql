@@ -140,9 +140,9 @@ CREATE TABLE IF NOT EXISTS rule_section_revisions (
 
     title TEXT NOT NULL,
     body TEXT NOT NULL,
-    -- Who made the change that replaced this version ("importer", a user name, ...). There is no users
-    -- table yet, so this is free text.
-    edited_by TEXT,
+    -- Who made the change that replaced this version. NULL for system changes such as imports, which
+    -- say so in `note` (e.g. "Imported from 04_Combat(Journey 100).docx").
+    edited_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     note TEXT,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
