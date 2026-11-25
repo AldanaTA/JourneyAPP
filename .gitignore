@@ -8,3 +8,6 @@ __pycache__/
 #Postgress data
 postgres-data/
 pgdata/
+
+# Stored images (rules and other uploaded content)
+data/assets/

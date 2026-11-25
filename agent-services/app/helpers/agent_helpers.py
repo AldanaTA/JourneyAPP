@@ -68,6 +68,12 @@ def is_field_label_line(text: str) -> bool:
     return bool(_FIELD_LABEL_LINE.match(text))
 
 
+def field_label_of(text: str) -> str | None:
+    """The known field label a line starts with, lowercased ("LVL UP: x" -> "lvl up"), or None."""
+    match = _FIELD_LABEL_LINE.match(text)
+    return re.sub(r"\s+", " ", match.group(1).lower()) if match else None
+
+
 def _looks_like_block_name(text: str, next_text: str | None) -> bool:
     """A short title line (no colon, not a sentence) directly followed by a field label."""
     return (

@@ -4,11 +4,16 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - .:/agents  
+      - .:/agents
+      # Image files for rules (and later other content). The Spring API mounts the same host folder to
+      # serve them, so both containers see the same files.
+      - ${ASSET_STORAGE_HOST_DIR:-../data/assets}:/data/assets
     container_name: journey-agents
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      ASSET_STORAGE_DIR: /data/assets
     ports:
       - "${AGENT_PORT}:8800"
     healthcheck:
