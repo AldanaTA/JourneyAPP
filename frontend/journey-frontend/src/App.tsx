@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { lazy, Suspense, useState } from "react"
 import type { LucideIcon } from "lucide-react"
 import {
   BookOpenText,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { Navigate, NavLink, Route, Routes } from "react-router-dom"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import {
   Sheet,
   SheetContent,
@@ -19,10 +20,22 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import GameLibrarySection from "./sections/game-library/GameLibrarySection"
-import CompendiumSection from "./sections/compendium/CompendiumSection"
-import CharactersSection from "./sections/characters/CharactersSection"
-import CampaignsSection from "./sections/campaigns/CampaignsSection"
+
+// Every page is downloaded only when it is first opened, so the initial bundle holds just the app shell.
+const GameLibrarySection = lazy(() => import("./sections/game-library/GameLibrarySection"))
+const CompendiumSection = lazy(() => import("./sections/compendium/CompendiumSection"))
+const CharactersSection = lazy(() => import("./sections/characters/CharactersSection"))
+const CampaignsSection = lazy(() => import("./sections/campaigns/CampaignsSection"))
+const RuleBookReader = lazy(() => import("./sections/game-library/rules/RuleBookReader"))
+
+/** Shown while a lazily loaded page is downloading. */
+function PageLoading() {
+  return (
+    <div className="flex min-h-[180px] items-center justify-center gap-2 text-slate-600">
+      <Spinner className="h-5 w-5" /> <span>Loading…</span>
+    </div>
+  )
+}
 
 type SectionDefinition = {
   id: string
@@ -116,7 +129,6 @@ function App() {
                 <NavLink
                   key={id}
                   to={path}
-                  end={path === "/library"}
                   className={({ isActive }) =>
                     `flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-[10px] font-semibold tracking-wide transition-colors ${
                       isActive
@@ -137,20 +149,24 @@ function App() {
           </header>
 
           <main className="flex-1 px-4 py-5">
-            <Routes>
-              <Route path="/" element={<Navigate to="/library" replace />} />
-              <Route path="/library" element={<GameLibrarySection />} />
-              <Route path="/compendium" element={<CompendiumSection />} />
-              <Route path="/characters" element={<CharactersSection />} />
-              <Route path="/campaigns" element={<CampaignsSection />} />
-            </Routes>
+            <Suspense fallback={<PageLoading />}>
+              <Routes>
+                <Route path="/" element={<Navigate to="/library" replace />} />
+                <Route path="/library" element={<GameLibrarySection />} />
+                <Route path="/library/books/:bookId" element={<RuleBookReader />} />
+                <Route path="/library/books/:bookId/chapters/:chapterId" element={<RuleBookReader />} />
+                <Route path="/compendium" element={<CompendiumSection />} />
+                <Route path="/characters" element={<CharactersSection />} />
+                <Route path="/campaigns" element={<CampaignsSection />} />
+              </Routes>
+            </Suspense>
           </main>
         </div>
       </div>
       
       {/*Desktop View */}
       <div className="hidden min-h-screen bg-[#f5efe7] lg:flex lg:items-stretch lg:justify-center lg:p-8">
-        <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1400px] flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white/90 shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
+        <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1400px] flex-col overflow-clip rounded-[32px] border border-slate-200 bg-white/90 shadow-[0_30px_80px_rgba(15,23,42,0.12)]">
           <header className="flex items-center gap-3 border-b border-white/10 bg-[#201a12]/95 px-3 py-3 backdrop-blur-md">
            
 
@@ -173,7 +189,6 @@ function App() {
                 <NavLink
                   key={id}
                   to={path}
-                  end={path === "/library"}
                   className={({ isActive }) =>
                     `flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-semibold tracking-wide transition-colors ${
                       isActive
@@ -193,13 +208,17 @@ function App() {
 
           <main className="flex-1 bg-[#f5efe7] px-4 py-5 lg:px-6 lg:py-6">
             <div className="mx-auto max-w-[1200px]">
-              <Routes>
-                <Route path="/" element={<Navigate to="/library" replace />} />
-                <Route path="/library" element={<GameLibrarySection />} />
-                <Route path="/compendium" element={<CompendiumSection />} />
-                <Route path="/characters" element={<CharactersSection />} />
-                <Route path="/campaigns" element={<CampaignsSection />} />
-              </Routes>
+              <Suspense fallback={<PageLoading />}>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/library" replace />} />
+                  <Route path="/library" element={<GameLibrarySection />} />
+                  <Route path="/library/books/:bookId" element={<RuleBookReader />} />
+                  <Route path="/library/books/:bookId/chapters/:chapterId" element={<RuleBookReader />} />
+                  <Route path="/compendium" element={<CompendiumSection />} />
+                  <Route path="/characters" element={<CharactersSection />} />
+                  <Route path="/campaigns" element={<CampaignsSection />} />
+                </Routes>
+              </Suspense>
             </div>
           </main>
         </div>

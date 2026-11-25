@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardTitle } from "@/components/ui/card"
+import { RuleBookShelf } from "./rules/RuleBookShelf"
 
 function GameLibrarySection() {
   return (
@@ -29,22 +30,7 @@ function GameLibrarySection() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3.5">
-        <Card className="shadow-sm">
-          <CardContent className="gap-3 p-4">
-            <Badge variant="secondary">System</Badge>
-            <CardTitle className="text-lg">Dungeon Crawl</CardTitle>
-            <p className="text-sm text-slate-600">Core rules • 3 sessions</p>
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm">
-          <CardContent className="gap-3 p-4">
-            <Badge variant="secondary">System</Badge>
-            <CardTitle className="text-lg">Shadowdark</CardTitle>
-            <p className="text-sm text-slate-600">Dark fantasy • 2 parties</p>
-          </CardContent>
-        </Card>
-      </div>
+      <RuleBookShelf />
     </div>
   )
 }

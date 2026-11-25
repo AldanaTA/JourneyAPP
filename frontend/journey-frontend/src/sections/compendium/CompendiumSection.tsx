@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import type { PowerFilterRequest } from "@/apis/powerApi";
 import type { TraitFilterRequest } from "@/apis/traitApi";
 import type { JobFilterRequest } from "@/apis/jobApi";
@@ -6,27 +6,51 @@ import type { RaceFilterRequest } from "@/apis/raceApi";
 import type { ItemFilterRequest } from "@/apis/itemApi";
 import type { CreatureFilterRequest } from "@/apis/creatureApi";
 import { CategorySelector, type CompendiumCategory } from "./components/CategorySelector";
-import { PowerFilter } from "./components/filters/PowerFilter";
-import { TraitFilter } from "./components/filters/TraitFilter";
-import { JobFilter } from "./components/filters/JobFilter";
-import { RaceFilter } from "./components/filters/RaceFilter";
-import { ItemFilter } from "./components/filters/ItemFilter";
-import { CreatureFilter } from "./components/filters/CreatureFilter";
-import { PowerLoader } from "./components/loaders/PowerLoader";
-import { TraitLoader } from "./components/loaders/TraitLoader";
-import { JobLoader } from "./components/loaders/JobLoader";
-import { RaceLoader } from "./components/loaders/RaceLoader";
-import { ItemLoader } from "./components/loaders/ItemLoader";
-import { CreatureLoader } from "./components/loaders/CreatureLoader";
+import { Spinner } from "@/components/ui/spinner";
+import type { RuleFilterRequest } from "@/apis/rulesApi";
+
+// Each tab's filter and list are downloaded only when that tab is first opened.
+const PowerFilter = lazy(() => import("./components/filters/PowerFilter"));
+const TraitFilter = lazy(() => import("./components/filters/TraitFilter"));
+const JobFilter = lazy(() => import("./components/filters/JobFilter"));
+const RaceFilter = lazy(() => import("./components/filters/RaceFilter"));
+const ItemFilter = lazy(() => import("./components/filters/ItemFilter"));
+const CreatureFilter = lazy(() => import("./components/filters/CreatureFilter"));
+const RuleFilter = lazy(() => import("./components/filters/RuleFilter"));
+const PowerLoader = lazy(() => import("./components/loaders/PowerLoader"));
+const TraitLoader = lazy(() => import("./components/loaders/TraitLoader"));
+const JobLoader = lazy(() => import("./components/loaders/JobLoader"));
+const RaceLoader = lazy(() => import("./components/loaders/RaceLoader"));
+const ItemLoader = lazy(() => import("./components/loaders/ItemLoader"));
+const CreatureLoader = lazy(() => import("./components/loaders/CreatureLoader"));
+const RuleLoader = lazy(() => import("./components/loaders/RuleLoader"));
+
+/** Placeholder the size of a filter's search row while its code downloads. */
+function FilterLoading() {
+  return <div className="h-10 animate-pulse rounded-lg border border-slate-200 bg-white" aria-hidden="true" />;
+}
+
+/** Shown in the content panel while a tab's list code downloads. */
+function TabLoading() {
+  return (
+    <div className="flex min-h-[180px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600">
+      <div className="flex items-center gap-2">
+        <Spinner className="h-5 w-5" />
+        <span>Loading...</span>
+      </div>
+    </div>
+  );
+}
 
 function CompendiumSection() {
-  const [selectedCategory, setSelectedCategory] = useState<CompendiumCategory>("Powers");
+  const [selectedCategory, setSelectedCategory] = useState<CompendiumCategory>("Rules");
   const [powerFilters, setPowerFilters] = useState<PowerFilterRequest | null>(null);
   const [traitFilters, setTraitFilters] = useState<TraitFilterRequest | null>(null);
   const [jobFilters, setJobFilters] = useState<JobFilterRequest | null>(null);
   const [raceFilters, setRaceFilters] = useState<RaceFilterRequest | null>(null);
   const [itemFilters, setItemFilters] = useState<ItemFilterRequest | null>(null);
   const [creatureFilters, setCreatureFilters] = useState<CreatureFilterRequest | null>(null);
+  const [ruleFilters, setRuleFilters] = useState<RuleFilterRequest | null>(null);
 
   const renderFilter = () => {
     switch (selectedCategory) {
@@ -42,6 +66,8 @@ function CompendiumSection() {
         return <ItemFilter onApply={setItemFilters} initialFilters={itemFilters} />;
       case "Creatures":
         return <CreatureFilter onApply={setCreatureFilters} initialFilters={creatureFilters} />;
+      case "Rules":
+        return <RuleFilter onApply={setRuleFilters} initialFilters={ruleFilters} />;
       default:
         return null;
     }
@@ -61,6 +87,8 @@ function CompendiumSection() {
         return <ItemLoader filters={itemFilters} />;
       case "Creatures":
         return <CreatureLoader filters={creatureFilters} />;
+      case "Rules":
+        return <RuleLoader filters={ruleFilters} />;
       default:
         return null;
     }
@@ -91,7 +119,7 @@ function CompendiumSection() {
               </span>
             </div>
 
-            {renderFilter()}
+            <Suspense fallback={<FilterLoading />}>{renderFilter()}</Suspense>
           </aside>
 
           <main className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -104,7 +132,7 @@ function CompendiumSection() {
               </div>
             </div>
 
-            <div>{renderLoader()}</div>
+            <div><Suspense fallback={<TabLoading />}>{renderLoader()}</Suspense></div>
           </main>
         </div>
       </div>
