@@ -4,9 +4,13 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- A character's inventory, following the Inventory rules and the character sheet's Inventory tab.
 --
---   character_inventories     one row per character: money and attunement limit
---   character_inventory_slots slots the player adds and labels (from a bag, a trait, ...)
---   character_items           every item the character has, and where it is
+--   character_inventories        one row per character: money, base attunement limit, stack-limit multiplier
+--   character_inventory_slots    slots the player adds and labels (from a bag, a trait, ...)
+--   character_attunement_slots   extra attunements the player adds and labels (from a trait, an item, ...)
+--   character_items              every item the character has, and where it is
+--
+-- Slots of both kinds can be made in groups: a trait that gives 3 slots becomes "Spatial Storage 1..3" with
+-- group_name "Spatial Storage", so the group can be listed, extended, or removed together.
 --
 -- Every character has these fixed places:
 --   armor, left_hand, right_hand (or both_hands), bag   one item each, the equipped gear
@@ -57,8 +61,11 @@ CREATE TABLE IF NOT EXISTS character_inventories (
     silver INT NOT NULL DEFAULT 0 CHECK (silver >= 0),
     bronze INT NOT NULL DEFAULT 0 CHECK (bronze >= 0),
 
-    -- A character can attune to 3 magic items unless equipment or traits allow more.
+    -- Base number of attuned items (3 by the rules). The effective limit adds one per attunement slot
+    -- (character_attunement_slots), e.g. 3 + "Stable Body 1", "Stable Body 2" = 5.
     attunement_limit INT NOT NULL DEFAULT 3 CHECK (attunement_limit >= 0),
+    -- Multiplies every item's stack limit, e.g. 2 for Supply Sergeant ("doubles stack limits").
+    stack_limit_multiplier INT NOT NULL DEFAULT 1 CHECK (stack_limit_multiplier >= 1),
 
     notes TEXT NOT NULL DEFAULT '',
 
@@ -76,6 +83,8 @@ CREATE TABLE IF NOT EXISTS character_inventory_slots (
 
     -- Whatever the player calls it: "Common Bag 1", "Bag of Holding 3", "Pack Mule".
     label TEXT NOT NULL DEFAULT '',
+    -- Slots made together share a group ("Spatial Storage"); their labels are "<group> <n>".
+    group_name TEXT,
     notes TEXT NOT NULL DEFAULT '',
     sort_order INT NOT NULL DEFAULT 0,
 
@@ -88,6 +97,28 @@ CREATE TABLE IF NOT EXISTS character_inventory_slots (
 
 CREATE INDEX IF NOT EXISTS idx_character_inventory_slots_character_id
 ON character_inventory_slots (character_id, sort_order);
+
+-- ----------------------------
+-- Extra attunements
+-- ----------------------------
+
+-- One row per extra item a character can attune to, labelled by where it came from ("Stable Body 1").
+-- The effective attunement limit is character_inventories.attunement_limit plus the number of rows here.
+CREATE TABLE IF NOT EXISTS character_attunement_slots (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    character_id UUID NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+
+    label TEXT NOT NULL DEFAULT '',
+    group_name TEXT,
+    notes TEXT NOT NULL DEFAULT '',
+    sort_order INT NOT NULL DEFAULT 0,
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_character_attunement_slots_character_id
+ON character_attunement_slots (character_id, sort_order);
 
 -- ----------------------------
 -- Items
@@ -108,6 +139,9 @@ CREATE TABLE IF NOT EXISTS character_items (
     slot_id UUID,
 
     quantity INT NOT NULL DEFAULT 1 CHECK (quantity >= 1),
+    -- This stack's own limit, when it differs from the item's stack limit x the character's multiplier
+    -- (a storyteller ruling, a special container). NULL = the usual limit.
+    stack_limit INT CHECK (stack_limit >= 1),
     -- Attuned items count toward character_inventories.attunement_limit.
     attuned BOOLEAN NOT NULL DEFAULT FALSE,
     -- Charges left; NULL when the item has no charges.
@@ -126,6 +160,12 @@ CREATE TABLE IF NOT EXISTS character_items (
     CONSTRAINT chk_character_items_named CHECK (item_id IS NOT NULL OR NULLIF(TRIM(custom_name), '') IS NOT NULL),
     CONSTRAINT chk_character_items_slot CHECK ((location = 'slot') = (slot_id IS NOT NULL))
 );
+
+-- For databases created before these columns existed.
+ALTER TABLE character_inventories ADD COLUMN IF NOT EXISTS stack_limit_multiplier INT NOT NULL DEFAULT 1
+    CHECK (stack_limit_multiplier >= 1);
+ALTER TABLE character_inventory_slots ADD COLUMN IF NOT EXISTS group_name TEXT;
+ALTER TABLE character_items ADD COLUMN IF NOT EXISTS stack_limit INT CHECK (stack_limit >= 1);
 
 CREATE INDEX IF NOT EXISTS idx_character_items_character_id
 ON character_items (character_id, location, sort_order);
@@ -168,16 +208,21 @@ SELECT
     (SELECT COUNT(*) FROM character_inventory_slots s WHERE s.character_id = c.id) AS slot_count,
     (SELECT COUNT(*) FROM character_items ci WHERE ci.character_id = c.id AND ci.location = 'slot') AS used_slots,
     (SELECT COUNT(*) FROM character_items ci WHERE ci.character_id = c.id AND ci.attuned) AS attuned_count,
-    COALESCE(inv.attunement_limit, 3) AS attunement_limit,
-    -- Stacks holding more than the item's stack limit.
+    -- Effective limit: the base plus one per attunement slot.
+    CAST(COALESCE(inv.attunement_limit, 3)
+        + (SELECT COUNT(*) FROM character_attunement_slots a WHERE a.character_id = c.id) AS INT) AS attunement_limit,
+    -- Stacks holding more than their limit (own limit, else item limit x the character's multiplier).
     (SELECT COUNT(*) FROM character_items ci JOIN items i ON i.id = ci.item_id
-      WHERE ci.character_id = c.id AND ci.location = 'slot' AND ci.quantity > i.stack_limit) AS overfull_stacks,
+      WHERE ci.character_id = c.id AND ci.location = 'slot'
+        AND ci.quantity > COALESCE(ci.stack_limit, i.stack_limit * COALESCE(inv.stack_limit_multiplier, 1))) AS overfull_stacks,
     -- Attuned items that do not require attunement.
     (SELECT COUNT(*) FROM character_items ci JOIN items i ON i.id = ci.item_id
       WHERE ci.character_id = c.id AND ci.attuned AND NOT i.requires_attunement) AS needless_attunements,
     -- Total wealth in bronze, for sorting or display.
     COALESCE(inv.platinum, 0) * 10000 + COALESCE(inv.gold, 0) * 100 + COALESCE(inv.silver, 0) * 10
-        + COALESCE(inv.bronze, 0) AS wealth_bronze
+        + COALESCE(inv.bronze, 0) AS wealth_bronze,
+    COALESCE(inv.attunement_limit, 3) AS base_attunement_limit,
+    COALESCE(inv.stack_limit_multiplier, 1) AS stack_limit_multiplier
 FROM characters c
 LEFT JOIN character_inventories inv ON inv.character_id = c.id;
 

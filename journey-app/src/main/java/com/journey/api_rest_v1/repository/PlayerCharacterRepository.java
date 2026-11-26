@@ -1,0 +1,94 @@
+package com.journey.api_rest_v1.repository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import com.journey.api_rest_v1.domain.characters.PlayerCharacter;
+
+/**
+ * Data access for characters, plus reads of the character views (budget and stats are computed by the
+ * database, so the totals have one definition) and the race/job trait lists used to check picks.
+ */
+@Repository
+public interface PlayerCharacterRepository extends JpaRepository<PlayerCharacter, UUID> {
+
+    List<PlayerCharacter> findByUserIdOrderByUpdatedAtDesc(UUID userId);
+
+    /** One row of {@code character_point_budget}. */
+    interface BudgetView {
+        Integer getTotalExp();
+        Integer getAttributeExp();
+        Integer getSkillExp();
+        Integer getTraitExp();
+        Integer getPowerExp();
+        Integer getExpRemaining();
+        Integer getJobPoints();
+        Integer getJobTraitPoints();
+        Integer getJobPointsOnStats();
+        Integer getJobPointsRemaining();
+        Integer getRaceCount();
+        Integer getRacialTraitCost();
+        Integer getCombatSkillAdjustment();
+        Integer getLifeSkillAdjustment();
+    }
+
+    @Query(value = """
+            SELECT CAST(total_exp AS int) AS "totalExp", CAST(attribute_exp AS int) AS "attributeExp",
+                   CAST(skill_exp AS int) AS "skillExp", CAST(trait_exp AS int) AS "traitExp",
+                   CAST(power_exp AS int) AS "powerExp", CAST(exp_remaining AS int) AS "expRemaining",
+                   job_points AS "jobPoints", CAST(job_trait_points AS int) AS "jobTraitPoints",
+                   CAST(job_points_on_stats AS int) AS "jobPointsOnStats",
+                   CAST(job_points_remaining AS int) AS "jobPointsRemaining", CAST(race_count AS int) AS "raceCount",
+                   CAST(racial_trait_cost AS int) AS "racialTraitCost",
+                   CAST(combat_skill_adjustment AS int) AS "combatSkillAdjustment",
+                   CAST(life_skill_adjustment AS int) AS "lifeSkillAdjustment"
+            FROM character_point_budget WHERE character_id = :id
+            """, nativeQuery = true)
+    Optional<BudgetView> findBudget(@Param("id") UUID characterId);
+
+    /** One row of {@code character_stats}. */
+    interface StatsView {
+        Integer getBody();
+        Integer getStrength();
+        Integer getSpeed();
+        Integer getMagic();
+        Integer getMaxHp();
+        Integer getMaxWp();
+        Integer getMaxEp();
+        Integer getMaxMp();
+        Integer getPhysicalDamage();
+        Integer getMagicDamage();
+        Integer getPriority();
+        Integer getMovementFt();
+    }
+
+    @Query(value = """
+            SELECT CAST(body AS int) AS "body", CAST(strength AS int) AS "strength", CAST(speed AS int) AS "speed",
+                   CAST(magic AS int) AS "magic", CAST(max_hp AS int) AS "maxHp", CAST(max_wp AS int) AS "maxWp",
+                   CAST(max_ep AS int) AS "maxEp", CAST(max_mp AS int) AS "maxMp",
+                   CAST(physical_damage AS int) AS "physicalDamage", CAST(magic_damage AS int) AS "magicDamage",
+                   CAST(priority AS int) AS "priority", CAST(movement_ft AS int) AS "movementFt"
+            FROM character_stats WHERE character_id = :id
+            """, nativeQuery = true)
+    Optional<StatsView> findStats(@Param("id") UUID characterId);
+
+    /** True when the race lists the trait among its racial traits. */
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM race_traits WHERE race_id = :raceId AND trait_id = :traitId)",
+            nativeQuery = true)
+    boolean raceHasTrait(@Param("raceId") UUID raceId, @Param("traitId") UUID traitId);
+
+    /** The racial traits of a race, in display order. */
+    @Query(value = "SELECT trait_id FROM race_traits WHERE race_id = :raceId ORDER BY sort_order", nativeQuery = true)
+    List<UUID> findRaceTraitIds(@Param("raceId") UUID raceId);
+
+    /** True when the job offers the trait as one of its free picks. */
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM job_traits WHERE job_id = :jobId AND trait_id = :traitId)",
+            nativeQuery = true)
+    boolean jobHasTrait(@Param("jobId") UUID jobId, @Param("traitId") UUID traitId);
+}
