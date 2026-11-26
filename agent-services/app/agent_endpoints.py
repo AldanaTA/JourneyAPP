@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
+from helpers.auth_helpers import require_admin
 from routers.power_routes import router as power_router
 from routers.trait_routes import router as trait_router
 from routers.job_routes import router as job_router
@@ -50,10 +51,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-app.include_router(power_router)
-app.include_router(trait_router)
-app.include_router(job_router)
-app.include_router(race_router)
-app.include_router(item_router)
-app.include_router(creature_router)
-app.include_router(rules_router)
+# Importers write official content, so every import route needs an admin access token from the Journey API
+# (Authorization: Bearer <token>). "/", "/health", and "/docs" stay open.
+for router in (power_router, trait_router, job_router, race_router, item_router, creature_router, rules_router):
+    app.include_router(router, dependencies=[Depends(require_admin)])

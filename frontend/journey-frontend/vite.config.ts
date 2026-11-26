@@ -20,7 +20,8 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:8080",
+        // API_PROXY_TARGET points the dev server at another API instance (e.g. a test one).
+        target: process.env.API_PROXY_TARGET ?? "http://localhost:8080",
         changeOrigin: true,
       },
     },

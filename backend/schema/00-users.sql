@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS users (
     email_verified BOOLEAN NOT NULL DEFAULT FALSE,
     avatar_url TEXT,
 
+    -- Admins manage official content (compendium, rules, imports).
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+
     -- Disabled users cannot sign in or refresh; existing tokens should be revoked when this is set.
     disabled_at TIMESTAMP WITH TIME ZONE,
     last_login_at TIMESTAMP WITH TIME ZONE,
@@ -33,6 +36,9 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- For databases created before is_admin existed.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Emails are optional but unique when present, ignoring case.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique
@@ -172,5 +178,24 @@ ON access_tokens (refresh_token_id);
 
 CREATE INDEX IF NOT EXISTS idx_access_tokens_expires_at
 ON access_tokens (expires_at);
+
+-- ----------------------------
+-- Default admin
+-- ----------------------------
+
+-- An admin account that signs in with the username "admin". Only the bcrypt hash (cost 12) of its password
+-- is stored here. Change the password after the first sign-in. Skipped if an "admin" password identity
+-- already exists, so re-running this file never resets it.
+WITH existing AS (
+    SELECT 1 FROM auth_identities WHERE provider = 'password' AND provider_subject = 'admin'
+), new_user AS (
+    INSERT INTO users (display_name, is_admin)
+    SELECT 'admin', TRUE
+    WHERE NOT EXISTS (SELECT 1 FROM existing)
+    RETURNING id
+)
+INSERT INTO auth_identities (user_id, provider, provider_subject, password_hash, password_updated_at)
+SELECT id, 'password', 'admin', '$2a$12$xXIn.bfC1dMY.WH4n8qtgexIDZ6Kh53v19i/0j2cvyMuenyJWA8/S', NOW()
+FROM new_user;
 
 COMMIT;
