@@ -28,6 +28,7 @@ import com.journey.api_rest_v1.dto.character.CharacterInventoryDto;
 import com.journey.api_rest_v1.dto.character.CharacterItemDto;
 import com.journey.api_rest_v1.dto.character.InventorySlotDto;
 import com.journey.api_rest_v1.dto.character.SaveCharacterItemRequest;
+import com.journey.api_rest_v1.dto.character.SaveCharacterRequest;
 import com.journey.api_rest_v1.dto.character.SaveInventorySlotRequest;
 import com.journey.api_rest_v1.dto.character.UpdateInventoryRequest;
 import com.journey.api_rest_v1.repository.CharacterAttunementSlotRepository;
@@ -405,6 +406,120 @@ public class CharacterInventoryServiceImpl implements CharacterInventoryService 
         if (message.contains("idx_character_items_right_hand")) return "The right hand is already holding something";
         if (message.contains("idx_character_items_one_per_slot")) return "That slot already holds a stack";
         return "That change conflicts with the rest of the inventory";
+    }
+
+    // ----------------------------
+    // Whole-inventory save
+    // ----------------------------
+
+    /**
+     * Replaces the character's money, limits, slots, attunement slots, and items with the editor's version
+     * (part of PUT /characters/{id}). Call inside the save's transaction: a refused rule rolls everything back.
+     */
+    public void replaceAll(UUID characterId, SaveCharacterRequest.InventoryEntry r) {
+        CharacterInventory inventory = inventory(characterId);
+        inventory.setPlatinum(r.platinum());
+        inventory.setGold(r.gold());
+        inventory.setSilver(r.silver());
+        inventory.setBronze(r.bronze());
+        inventory.setAttunementLimit(r.attunement_limit());
+        inventory.setStackLimitMultiplier(r.stack_limit_multiplier());
+        if (r.notes() != null) inventory.setNotes(r.notes());
+        inventoryRepository.save(inventory);
+
+        // Old rows go first (and are flushed), so the new ones never meet them in the unique indexes.
+        itemRepository.deleteAll(itemRepository.findByCharacterIdOrderBySortOrderAscCreatedAtAsc(characterId));
+        itemRepository.flush();
+        slotRepository.deleteAll(slotRepository.findByCharacterIdOrderBySortOrderAscCreatedAtAsc(characterId));
+        attunementSlotRepository.deleteAll(attunementSlotRepository.findByCharacterIdOrderBySortOrderAscCreatedAtAsc(characterId));
+        slotRepository.flush();
+
+        Map<String, UUID> slotIds = new HashMap<>();
+        for (SaveCharacterRequest.SlotEntry entry : r.slots()) {
+            CharacterInventorySlot slot = new CharacterInventorySlot();
+            slot.setCharacterId(characterId);
+            slot.setLabel(entry.label() == null ? "" : entry.label().trim());
+            slot.setGroupName(blankToNull(entry.group_name()));
+            slot.setNotes(entry.notes() == null ? "" : entry.notes());
+            slot.setSortOrder(entry.sort_order());
+            slot = slotRepository.save(slot);
+            if (entry.key() != null && slotIds.put(entry.key(), slot.getId()) != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Two slots share the key " + entry.key());
+            }
+        }
+        for (SaveCharacterRequest.SlotEntry entry : r.attunement_slots()) {
+            CharacterAttunementSlot slot = new CharacterAttunementSlot();
+            slot.setCharacterId(characterId);
+            slot.setLabel(entry.label() == null ? "" : entry.label().trim());
+            slot.setGroupName(blankToNull(entry.group_name()));
+            slot.setNotes(entry.notes() == null ? "" : entry.notes());
+            slot.setSortOrder(entry.sort_order());
+            attunementSlotRepository.save(slot);
+        }
+        slotRepository.flush();
+
+        Map<UUID, Item> compendium = compendiumItems.findAllById(r.items().stream().map(SaveCharacterRequest.ItemEntry::item_id)
+                .filter(Objects::nonNull).filter(v -> !v.isBlank()).map(v -> CharacterAccess.parseUuid(v, "item"))
+                .collect(Collectors.toSet())).stream().collect(Collectors.toMap(Item::getId, Function.identity()));
+        List<CharacterItem> items = new ArrayList<>();
+        int attuned = 0;
+        for (SaveCharacterRequest.ItemEntry entry : r.items()) {
+            CharacterItem item = new CharacterItem();
+            item.setCharacterId(characterId);
+            Item c = null;
+            if (entry.item_id() != null && !entry.item_id().isBlank()) {
+                UUID itemId = CharacterAccess.parseUuid(entry.item_id(), "item");
+                c = compendium.get(itemId);
+                if (c == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Item not found: " + itemId);
+                item.setItemId(itemId);
+            }
+            item.setCustomName(blankToNull(entry.custom_name()));
+            if (item.getItemId() == null && item.getCustomName() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Every item needs a compendium item or a name");
+            }
+            item.setLocation(entry.location());
+            if (entry.location() == InventoryLocation.SLOT) {
+                UUID slotId = entry.slot_key() == null ? null : slotIds.get(entry.slot_key());
+                if (slotId == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, displayName(item, c) + " is in a slot that does not exist");
+                }
+                item.setSlotId(slotId);
+            }
+            item.setQuantity(entry.quantity());
+            item.setStackLimit(entry.stack_limit());
+            item.setAttuned(entry.attuned());
+            item.setChargesRemaining(entry.charges_remaining());
+            item.setNotes(entry.notes() == null ? "" : entry.notes());
+            item.setSortOrder(entry.sort_order());
+
+            Integer limit = effectiveStackLimit(item, c, r.stack_limit_multiplier());
+            if (item.getLocation() == InventoryLocation.SLOT && limit != null && item.getQuantity() > limit) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A slot holds at most " + limit + " "
+                        + displayName(item, c) + "; split the rest into another slot");
+            }
+            if (entry.attuned()) {
+                if (c != null && !c.isRequiresAttunement()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, c.getName() + " does not need attunement");
+                }
+                attuned++;
+            }
+            items.add(item);
+        }
+        int attunementLimit = r.attunement_limit() + r.attunement_slots().size();
+        if (attuned > attunementLimit) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The character can attune to " + attunementLimit
+                    + " items at a time, not " + attuned);
+        }
+        try {
+            itemRepository.saveAllAndFlush(items);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, conflictMessage(ex), ex);
+        }
+    }
+
+    /** The character's inventory as the API shows it. */
+    public CharacterInventoryDto snapshot(UUID characterId) {
+        return toDto(characterId);
     }
 
     // ----------------------------

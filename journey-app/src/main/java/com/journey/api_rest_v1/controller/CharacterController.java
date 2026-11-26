@@ -21,12 +21,14 @@ import com.journey.api_rest_v1.dto.character.CharacterSummaryDto;
 import com.journey.api_rest_v1.dto.character.CreateCharacterRequest;
 import com.journey.api_rest_v1.dto.character.CreateExpAwardRequest;
 import com.journey.api_rest_v1.dto.character.CreationCheckDto;
+import com.journey.api_rest_v1.dto.character.SaveCharacterRequest;
 import com.journey.api_rest_v1.dto.character.SetCharacterJobRequest;
 import com.journey.api_rest_v1.dto.character.SetCharacterRacesRequest;
 import com.journey.api_rest_v1.dto.character.UpdateCharacterAttributeRequest;
 import com.journey.api_rest_v1.dto.character.UpdateCharacterRequest;
 import com.journey.api_rest_v1.dto.character.UpdateCharacterSkillRequest;
 import com.journey.api_rest_v1.service.CharacterService;
+import com.journey.api_rest_v1.service.impl.CharacterSaveService;
 
 import jakarta.validation.Valid;
 
@@ -42,10 +44,12 @@ import jakarta.validation.Valid;
 public class CharacterController {
 
     private final CharacterService characterService;
+    private final CharacterSaveService saveService;
 
-    /** Wires the character service. */
-    public CharacterController(CharacterService characterService) {
+    /** Wires the character services. */
+    public CharacterController(CharacterService characterService, CharacterSaveService saveService) {
         this.characterService = characterService;
+        this.saveService = saveService;
     }
 
     /** The starting sheets and skills character creation chooses from. */
@@ -75,6 +79,17 @@ public class CharacterController {
     @PatchMapping("/{id}")
     public ResponseEntity<CharacterDto> update(@PathVariable String id, @Valid @RequestBody UpdateCharacterRequest request) {
         return ResponseEntity.ok(characterService.update(id, request));
+    }
+
+    /**
+     * Saves the whole character as the editor has it (Save and autosave): identity, sources, races, job,
+     * attributes, skills, traits, powers, capacities, and inventory, checked together in one transaction.
+     * Parts left out (null) are not changed. Returns the character and its inventory.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<CharacterSaveService.SavedCharacter> save(@PathVariable String id,
+            @Valid @RequestBody SaveCharacterRequest request) {
+        return ResponseEntity.ok(saveService.save(id, request));
     }
 
     @DeleteMapping("/{id}")

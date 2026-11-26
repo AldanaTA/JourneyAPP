@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -91,4 +92,21 @@ public interface PlayerCharacterRepository extends JpaRepository<PlayerCharacter
     @Query(value = "SELECT EXISTS (SELECT 1 FROM job_traits WHERE job_id = :jobId AND trait_id = :traitId)",
             nativeQuery = true)
     boolean jobHasTrait(@Param("jobId") UUID jobId, @Param("traitId") UUID traitId);
+
+    /** The content sources the character is built from, by name. */
+    @Query(value = """
+            SELECT ccs.source_id FROM character_content_sources ccs
+            JOIN content_sources s ON s.id = ccs.source_id
+            WHERE ccs.character_id = :id ORDER BY s.source_name
+            """, nativeQuery = true)
+    List<UUID> findSourceIds(@Param("id") UUID characterId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = "DELETE FROM character_content_sources WHERE character_id = :id", nativeQuery = true)
+    void clearSources(@Param("id") UUID characterId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = "INSERT INTO character_content_sources (character_id, source_id) VALUES (:id, :sourceId)",
+            nativeQuery = true)
+    void addSource(@Param("id") UUID characterId, @Param("sourceId") UUID sourceId);
 }

@@ -28,6 +28,7 @@ import {
 const GameLibrarySection = lazy(() => import("./sections/game-library/GameLibrarySection"))
 const CompendiumSection = lazy(() => import("./sections/compendium/CompendiumSection"))
 const CharactersSection = lazy(() => import("./sections/characters/CharactersSection"))
+const CharacterEditor = lazy(() => import("./sections/characters/editor/CharacterEditor"))
 const CampaignsSection = lazy(() => import("./sections/campaigns/CampaignsSection"))
 const RuleBookReader = lazy(() => import("./sections/game-library/rules/RuleBookReader"))
 const SignInPage = lazy(() => import("./sections/auth/SignInPage"))
@@ -79,6 +80,9 @@ const appRoutes = (
     <Route path="/library/books/:bookId/chapters/:chapterId" element={<RuleBookReader />} />
     <Route path="/compendium" element={<CompendiumSection />} />
     <Route path="/characters" element={<CharactersSection />} />
+    {/* Creating (/characters/new/edit), editing, and viewing a character share one full-screen editor. */}
+    <Route path="/characters/:characterId/edit" element={<CharacterEditor mode="edit" />} />
+    <Route path="/characters/:characterId" element={<CharacterEditor mode="view" />} />
     <Route path="/campaigns" element={<CampaignsSection />} />
     <Route path="*" element={<Navigate to="/library" replace />} />
   </Routes>

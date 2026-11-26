@@ -34,6 +34,7 @@ import com.journey.api_rest_v1.mapper.TraitMapper;
 import com.journey.api_rest_v1.repository.ContentSourceRepository;
 import com.journey.api_rest_v1.repository.TraitRepository;
 import com.journey.api_rest_v1.service.TraitService;
+import com.journey.api_rest_v1.specification.SourceSpecifications;
 import com.journey.api_rest_v1.specification.TraitSpecifications;
 
 /**
@@ -192,7 +193,7 @@ public class TraitServiceImpl implements TraitService {
     @Override
     @Transactional(readOnly = true)
     public Page<TraitResponseDto> filterTraits(TraitFilterRequest request) {
-        Specification<Trait> specification = TraitSpecifications.all();
+        Specification<Trait> specification = TraitSpecifications.all().and(SourceSpecifications.<Trait>inSources(request.sourceIds()));
 
         if (request.categories() != null && !request.categories().isEmpty()) {
             specification = specification.and(

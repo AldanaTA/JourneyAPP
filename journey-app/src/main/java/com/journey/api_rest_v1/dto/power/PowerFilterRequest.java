@@ -19,7 +19,9 @@ public record PowerFilterRequest(
     String mpOperator,
     Integer epCost,
     String epOperator,
-    String name
+    String name,
+    /** Only content from these sources (the character\'s chosen books); empty = every source. */
+    List<String> sourceIds
 ) {
     public boolean getMatchAll() {
         return matchAll != null && matchAll;

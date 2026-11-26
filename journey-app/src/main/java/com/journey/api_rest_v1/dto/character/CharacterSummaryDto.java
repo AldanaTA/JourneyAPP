@@ -13,6 +13,7 @@ public record CharacterSummaryDto(
     CharacterStatus status,
     String jobName,
     List<String> raceNames,
+    String createdAt,
     String updatedAt
 ) {
 }

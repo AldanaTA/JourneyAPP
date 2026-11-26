@@ -13,7 +13,9 @@ public record JobFilterRequest(
     Integer page,
     Integer size,
     String name,
-    String traitName
+    String traitName,
+    /** Only content from these sources (the character\'s chosen books); empty = every source. */
+    List<String> sourceIds
 ) {
     /** Returns true only when the client explicitly asked for jobs matching every selected category. */
     public boolean getMatchAll() {

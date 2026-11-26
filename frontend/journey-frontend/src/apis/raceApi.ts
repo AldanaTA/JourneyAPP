@@ -12,6 +12,8 @@ export interface RaceFilterRequest {
   name: string | null;
   /** Matches races containing a trait whose name includes this text. */
   traitName: string | null;
+  /** Only content from these sources (e.g. a character's chosen books); omitted = every source. */
+  sourceIds?: string[];
 }
 
 

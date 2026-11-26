@@ -18,7 +18,9 @@ public record RaceFilterRequest(
     Integer page,
     Integer size,
     String name,
-    String traitName
+    String traitName,
+    /** Only content from these sources (the character\'s chosen books); empty = every source. */
+    List<String> sourceIds
 ) {
     /** Returns the requested page, defaulting to the first page. */
     public int getPage() {

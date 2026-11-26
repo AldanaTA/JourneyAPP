@@ -14,6 +14,8 @@ export interface ItemFilterRequest {
   page: number;
   size: number;
   name: string | null;
+  /** Only content from these sources (e.g. a character's chosen books); omitted = every source. */
+  sourceIds?: string[];
 }
 
 

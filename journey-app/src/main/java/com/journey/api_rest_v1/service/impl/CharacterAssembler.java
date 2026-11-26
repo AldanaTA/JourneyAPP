@@ -125,6 +125,7 @@ public class CharacterAssembler {
                 languageRace == null ? null : new NamedRefDto(languageRace.getId().toString(), languageRace.getRaceName()),
                 languageRace == null ? null : languageRace.getLanguages(),
                 c.getLearnedLanguages(),
+                characterRepository.findSourceIds(id).stream().map(UUID::toString).toList(),
                 c.getStartingExp(), c.getJobPoints(),
                 new CharacterCapacitiesDto(c.getCurrentHp(), c.getCurrentWp(), c.getCurrentEp(), c.getCurrentMp(),
                         c.getTempHp(), c.getHpBonus(), c.getWpBonus(), c.getEpBonus(), c.getMpBonus(),

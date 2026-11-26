@@ -27,6 +27,8 @@ public record CharacterDto(
     NamedRefDto languageRace,
     String raceLanguages,
     String learnedLanguages,
+    /** The content sources (besides the core rules) the character is built from. */
+    List<String> sourceIds,
     int startingExp,
     int jobPoints,
     CharacterCapacitiesDto capacities,

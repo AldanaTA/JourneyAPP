@@ -36,6 +36,7 @@ import com.journey.api_rest_v1.repository.ContentSourceRepository;
 import com.journey.api_rest_v1.repository.PowerCategoriesRepository;
 import com.journey.api_rest_v1.repository.PowerRepository;
 import com.journey.api_rest_v1.service.PowerService;
+import com.journey.api_rest_v1.specification.SourceSpecifications;
 import com.journey.api_rest_v1.specification.PowerSpecifications;
 
 /**
@@ -224,7 +225,8 @@ public class PowerServiceImpl implements PowerService {
     @Override
     @Transactional(readOnly = true)
     public Page<PowerResponseDto> filterPowers(PowerFilterRequest request) {
-        Specification<Power> specification = PowerSpecifications.withType(request.type());
+        Specification<Power> specification = PowerSpecifications.withType(request.type())
+                .and(SourceSpecifications.<Power>inSources(request.sourceIds()));
 
         if (request.categories() != null && !request.categories().isEmpty()) {
             specification = specification.and(PowerSpecifications.withCategories(request.categories(), request.getMatchAll()));

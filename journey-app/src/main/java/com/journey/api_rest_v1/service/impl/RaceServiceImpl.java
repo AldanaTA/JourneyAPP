@@ -43,6 +43,7 @@ import com.journey.api_rest_v1.repository.RaceRepository;
 import com.journey.api_rest_v1.repository.RaceTraitsRepository;
 import com.journey.api_rest_v1.repository.TraitRepository;
 import com.journey.api_rest_v1.service.RaceService;
+import com.journey.api_rest_v1.specification.SourceSpecifications;
 import com.journey.api_rest_v1.specification.RaceSpecifications;
 
 /**
@@ -203,6 +204,7 @@ public class RaceServiceImpl implements RaceService {
     @Transactional(readOnly = true)
     public Page<RaceResponseDto> filterRaces(RaceFilterRequest request) {
         Specification<Race> specification = RaceSpecifications.all()
+                .and(SourceSpecifications.<Race>inSources(request.sourceIds()))
                 .and(RaceSpecifications.withSizes(request.sizes()))
                 .and(RaceSpecifications.withMovement(request.getMovementOperator(), request.movement()))
                 .and(RaceSpecifications.withTraitName(request.traitName()));

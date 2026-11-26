@@ -42,6 +42,7 @@ import com.journey.api_rest_v1.repository.ItemRepository;
 import com.journey.api_rest_v1.repository.WeaponPropertyRepository;
 import com.journey.api_rest_v1.repository.WeaponTypeRepository;
 import com.journey.api_rest_v1.service.ItemService;
+import com.journey.api_rest_v1.specification.SourceSpecifications;
 import com.journey.api_rest_v1.specification.ItemSpecifications;
 
 /**
@@ -183,6 +184,7 @@ public class ItemServiceImpl implements ItemService {
     @Transactional(readOnly = true)
     public Page<ItemResponseDto> filterItems(ItemFilterRequest request) {
         Specification<Item> specification = ItemSpecifications.all()
+                .and(SourceSpecifications.<Item>inSources(request.sourceIds()))
                 .and(ItemSpecifications.withTypes(request.itemTypes()))
                 .and(ItemSpecifications.withRarities(request.rarities()))
                 .and(ItemSpecifications.magicOnly(request.getMagicOnly()))

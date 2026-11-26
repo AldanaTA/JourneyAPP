@@ -12,6 +12,8 @@ export interface JobFilterRequest {
   name: string | null;
   /** Matches jobs containing a trait whose name includes this text. */
   traitName: string | null;
+  /** Only content from these sources (e.g. a character's chosen books); omitted = every source. */
+  sourceIds?: string[];
 }
 
 

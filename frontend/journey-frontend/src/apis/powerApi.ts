@@ -18,6 +18,8 @@ export interface PowerFilterRequest {
   epCost: number | null;
   epOperator: Operator;
   name: string | null;
+  /** Only content from these sources (e.g. a character's chosen books); omitted = every source. */
+  sourceIds?: string[];
 }
 
 

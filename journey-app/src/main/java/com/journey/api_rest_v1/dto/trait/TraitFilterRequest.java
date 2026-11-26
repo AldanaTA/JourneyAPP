@@ -24,7 +24,9 @@ public record TraitFilterRequest(
     String mpOperator,
     Integer epCost,
     String epOperator,
-    String name
+    String name,
+    /** Only content from these sources (the character\'s chosen books); empty = every source. */
+    List<String> sourceIds
 ) {
     /** Returns true only when the client explicitly asked for traits matching every selected category. */
     public boolean getMatchAll() {

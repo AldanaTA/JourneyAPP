@@ -89,6 +89,7 @@ public class CharacterServiceImpl implements CharacterService {
     private final CharacterAccess access;
     private final CharacterAssembler assembler;
     private final CurrentUser currentUser;
+    private final CharacterSaveService saveService;
 
     /** Wires the repositories and helpers. */
     public CharacterServiceImpl(PlayerCharacterRepository characterRepository,
@@ -105,7 +106,8 @@ public class CharacterServiceImpl implements CharacterService {
             CharacterInventoryRepository inventoryRepository,
             CharacterAccess access,
             CharacterAssembler assembler,
-            CurrentUser currentUser) {
+            CurrentUser currentUser,
+            CharacterSaveService saveService) {
         this.characterRepository = characterRepository;
         this.sheetRepository = sheetRepository;
         this.skillRepository = skillRepository;
@@ -121,6 +123,7 @@ public class CharacterServiceImpl implements CharacterService {
         this.access = access;
         this.assembler = assembler;
         this.currentUser = currentUser;
+        this.saveService = saveService;
     }
 
     // ----------------------------
@@ -158,7 +161,7 @@ public class CharacterServiceImpl implements CharacterService {
             result.add(new CharacterSummaryDto(c.getId().toString(), c.getName(), c.getStatus(),
                     c.getJobId() == null ? null : jobNames.get(c.getJobId()),
                     raceIds.stream().map(races::get).filter(Objects::nonNull).map(Race::getRaceName).toList(),
-                    String.valueOf(c.getUpdatedAt())));
+                    String.valueOf(c.getCreatedAt()), String.valueOf(c.getUpdatedAt())));
         }
         return result;
     }
@@ -196,6 +199,7 @@ public class CharacterServiceImpl implements CharacterService {
         CharacterInventory inventory = new CharacterInventory();
         inventory.setCharacterId(id);
         inventoryRepository.save(inventory);
+        if (request.source_ids() != null) saveService.setSources(id, request.source_ids());
         access.requireWithinBudget(id);
         return assembler.toDto(c);
     }

@@ -89,7 +89,7 @@ ON content_sources (owner_user_id);
 INSERT INTO content_sources (source_name, source_desc, kind, visibility)
 VALUES
     ('Core', 'The core content source for the game.', 'core', 'public'),
-    ('Calthora', 'The Calthora content source for the game.', 'book', 'entitled')
+    ('Calthora', 'The Calthora content source for the game.', 'book', 'public')
 ON CONFLICT (source_name) WHERE kind IN ('core', 'book') DO NOTHING;
 
 -- ----------------------------

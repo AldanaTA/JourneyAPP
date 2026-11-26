@@ -1,5 +1,7 @@
 package com.journey.api_rest_v1.dto.character;
 
+import java.util.List;
+
 import com.journey.api_rest_v1.domain.races.RaceSize;
 
 import jakarta.validation.constraints.Min;
@@ -25,6 +27,8 @@ public record CreateCharacterRequest(
     String learned_languages,
     String history,
     String important_characters,
-    String notes
+    String notes,
+    /** Content sources (besides the core rules) to build the character from. */
+    List<String> source_ids
 ) {
 }

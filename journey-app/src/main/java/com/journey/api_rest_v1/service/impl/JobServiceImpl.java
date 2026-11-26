@@ -46,6 +46,7 @@ import com.journey.api_rest_v1.repository.JobCategoryRepository;
 import com.journey.api_rest_v1.repository.JobRepository;
 import com.journey.api_rest_v1.repository.TraitRepository;
 import com.journey.api_rest_v1.service.JobService;
+import com.journey.api_rest_v1.specification.SourceSpecifications;
 import com.journey.api_rest_v1.specification.JobSpecifications;
 
 /**
@@ -196,6 +197,7 @@ public class JobServiceImpl implements JobService {
         }
 
         Specification<Job> specification = JobSpecifications.all()
+                .and(SourceSpecifications.<Job>inSources(request.sourceIds()))
                 .and(JobSpecifications.withCategories(
                         request.categories(), request.getMatchAll(), request.getPrimaryOnly()))
                 .and(JobSpecifications.withTraitName(request.traitName()));

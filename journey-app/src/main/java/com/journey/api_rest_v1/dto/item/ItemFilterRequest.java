@@ -20,7 +20,9 @@ public record ItemFilterRequest(
     List<String> damageTypes,
     Integer page,
     Integer size,
-    String name
+    String name,
+    /** Only content from these sources (the character\'s chosen books); empty = every source. */
+    List<String> sourceIds
 ) {
     /** Returns true only when the client asked for magic items only. */
     public boolean getMagicOnly() {
