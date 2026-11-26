@@ -180,6 +180,33 @@ CREATE INDEX IF NOT EXISTS idx_access_tokens_expires_at
 ON access_tokens (expires_at);
 
 -- ----------------------------
+-- Password reset tokens
+-- ----------------------------
+
+-- One row per "forgot password" email. The emailed link carries the raw token; only its SHA-256 hash is
+-- stored. A token works once (used_at) and only until expires_at; requesting a new one or changing the
+-- password makes older ones unusable.
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+    -- Hex SHA-256 of the raw token.
+    token_hash TEXT NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    used_at TIMESTAMP WITH TIME ZONE,
+    -- Who asked, for spotting abuse.
+    requested_ip INET,
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    CONSTRAINT uq_password_reset_tokens_token_hash UNIQUE (token_hash),
+    CONSTRAINT chk_password_reset_tokens_expiry CHECK (expires_at > created_at)
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id
+ON password_reset_tokens (user_id, created_at DESC);
+
+-- ----------------------------
 -- Default admin
 -- ----------------------------
 

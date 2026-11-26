@@ -59,6 +59,11 @@ export function refreshSession(): Promise<boolean> {
           await new Promise((resolve) => window.setTimeout(resolve, REFRESH_RETRY_DELAY_MS));
           response = await requestRefresh();
         }
+        if (response.status === 429) {
+          // Rate-limited, not signed out: keep the session and let the next request or timer try again.
+          if (useAuthStore.getState().status === "loading") clearSession();
+          return useAuthStore.getState().status === "signedIn";
+        }
         if (!response.ok) {
           clearSession();
           return false;

@@ -1,10 +1,10 @@
 import type { RuleBook, RuleChapter, RuleSearchResult } from "../models/Rules";
+import { authorizedFetch } from "../auth/session";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/$/, "");
 
 /** Performs a GET against the rules API and returns the parsed JSON body. */
 async function requestJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, { signal });
+  const response = await authorizedFetch(`${path}`, { signal });
   if (!response.ok) {
     throw new Error(`Rules API request failed: ${response.status} ${response.statusText}`);
   }
@@ -33,9 +33,16 @@ export function searchRules(query: string, bookId?: string, limit = 20, signal?:
   return requestJson<RuleSearchResult[]>(`/rules/search?${params.toString()}`, signal);
 }
 
-/** URL of a stored image, for an asset id taken from an ![alt](asset:<id>) link. */
-export function assetUrl(assetId: string): string {
-  return `${API_BASE_URL}/assets/${encodeURIComponent(assetId)}`;
+/**
+ * Downloads a stored image (for an asset id from an ![alt](asset:<id>) link). Images need the access token
+ * like every other API call, so they cannot be loaded with a plain <img src>; see AuthImage.
+ */
+export async function fetchAsset(assetId: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await authorizedFetch(`/assets/${encodeURIComponent(assetId)}`, { signal });
+  if (!response.ok) {
+    throw new Error(`Image request failed: ${response.status} ${response.statusText}`);
+  }
+  return response.blob();
 }
 
 /** What the compendium's Rules tab searches for; null in the UI means no search yet. */

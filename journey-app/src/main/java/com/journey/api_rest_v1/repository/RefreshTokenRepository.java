@@ -34,4 +34,12 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
             WHERE t.familyId = :familyId AND t.revokedAt IS NULL
             """)
     int revokeFamily(@Param("familyId") UUID familyId, @Param("now") OffsetDateTime now, @Param("reason") String reason);
+
+    /** Revokes every active session of a user (password changed or reset). */
+    @Modifying
+    @Query("""
+            UPDATE RefreshToken t SET t.revokedAt = :now, t.revokedReason = :reason
+            WHERE t.userId = :userId AND t.revokedAt IS NULL
+            """)
+    int revokeAllForUser(@Param("userId") UUID userId, @Param("now") OffsetDateTime now, @Param("reason") String reason);
 }

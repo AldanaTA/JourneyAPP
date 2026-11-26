@@ -15,8 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.journey.api_rest_v1.config.AuthProperties;
 import com.journey.api_rest_v1.dto.auth.AuthResponseDto;
+import com.journey.api_rest_v1.dto.auth.ChangePasswordRequest;
+import com.journey.api_rest_v1.dto.auth.ForgotPasswordRequest;
 import com.journey.api_rest_v1.dto.auth.LoginRequest;
 import com.journey.api_rest_v1.dto.auth.RegisterRequest;
+import com.journey.api_rest_v1.dto.auth.ResetPasswordRequest;
 import com.journey.api_rest_v1.dto.auth.UserDto;
 import com.journey.api_rest_v1.service.AuthService;
 import com.journey.api_rest_v1.service.AuthService.ClientInfo;
@@ -82,6 +85,34 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserDto> me() {
         return ResponseEntity.ok(authService.getUser(currentUser.requireId()));
+    }
+
+    /**
+     * Changes the signed-in user's password. Signs out every other session and returns a fresh one for this
+     * device (new access token and refresh cookie).
+     */
+    @PostMapping("/password")
+    public ResponseEntity<AuthResponseDto> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+            HttpServletRequest http) {
+        return withSession(HttpStatus.OK, authService.changePassword(currentUser.requireId(), request, client(http)));
+    }
+
+    /**
+     * Emails a password reset link if an account uses that email. Always returns 202 Accepted, so the
+     * response never reveals whether an account exists.
+     */
+    @PostMapping("/password/forgot")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest http) {
+        authService.requestPasswordReset(request, client(http));
+        return ResponseEntity.accepted().build();
+    }
+
+    /** Sets a new password with the token from a reset email; every session is signed out. */
+    @PostMapping("/password/reset")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.noContent().build();
     }
 
     private ResponseEntity<AuthResponseDto> withSession(HttpStatus status, Session session) {

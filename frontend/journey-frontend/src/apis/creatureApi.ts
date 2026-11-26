@@ -1,5 +1,6 @@
 import type { CreaturePage, CreatureTypeInfo, StatusConditionInfo } from "../models/Creature";
 import type { RaceSize } from "../models/Race";
+import { authorizedFetch } from "../auth/session";
 
 /** Body sent to POST /creatures/filter-by-category; null/empty values are ignored by the backend. */
 export interface CreatureFilterRequest {
@@ -18,11 +19,10 @@ export interface CreatureFilterRequest {
   name: string | null;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/$/, "");
 
 /** Performs a creature API request and verifies the response is a page of creatures. */
 async function requestCreatures(path: string, init?: RequestInit): Promise<CreaturePage> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  const response = await authorizedFetch(`${path}`, init);
   if (!response.ok) {
     throw new Error(`Creature API request failed: ${response.status} ${response.statusText}`);
   }
@@ -54,7 +54,7 @@ export function filterCreatures(filters: CreatureFilterRequest, page = 0, size =
 
 /** Fetches every creature type (all sources), for filter options. */
 export async function getCreatureTypes(): Promise<CreatureTypeInfo[]> {
-  const response = await fetch(`${API_BASE_URL}/creatures/types`);
+  const response = await authorizedFetch(`/creatures/types`);
   if (!response.ok) {
     throw new Error(`Creature API request failed: ${response.status} ${response.statusText}`);
   }
@@ -63,7 +63,7 @@ export async function getCreatureTypes(): Promise<CreatureTypeInfo[]> {
 
 /** Fetches every status condition with its rules text (for filter options and tooltips). */
 export async function getStatusConditions(): Promise<StatusConditionInfo[]> {
-  const response = await fetch(`${API_BASE_URL}/status-conditions`);
+  const response = await authorizedFetch(`/status-conditions`);
   if (!response.ok) {
     throw new Error(`Status condition API request failed: ${response.status} ${response.statusText}`);
   }

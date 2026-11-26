@@ -2,8 +2,8 @@ import { memo } from "react";
 import Markdown, { defaultUrlTransform } from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { assetUrl } from "../../../apis/rulesApi";
 import type { RuleChapter } from "../../../models/Rules";
+import { AuthImage } from "./AuthImage";
 import { RuleEntityCard } from "./RuleEntityCard";
 import { isRuleScheme, parseAssetLink, parseEntityLink, resolveEntity } from "./ruleLinks";
 import type { RuleEntitySelection } from "./ruleLinks";
@@ -97,13 +97,11 @@ export const RuleMarkdown = memo(function RuleMarkdown({ body, chapter, onOpenEn
       if (!assetId) return null;
       const asset = chapter.assets[assetId];
       return (
-        <img
-          src={assetUrl(assetId)}
+        <AuthImage
+          assetId={assetId}
           alt={asset?.altText ?? alt ?? ""}
           width={asset?.width ?? undefined}
           height={asset?.height ?? undefined}
-          loading="lazy"
-          decoding="async"
           className="my-4 h-auto max-w-full rounded-xl border border-slate-200 shadow-sm"
         />
       );

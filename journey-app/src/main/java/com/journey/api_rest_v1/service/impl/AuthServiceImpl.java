@@ -8,6 +8,7 @@ import java.time.ZoneOffset;
 import java.util.Locale;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -23,17 +24,25 @@ import com.journey.api_rest_v1.config.AuthProperties;
 import com.journey.api_rest_v1.domain.users.AccessToken;
 import com.journey.api_rest_v1.domain.users.AuthIdentity;
 import com.journey.api_rest_v1.domain.users.AuthProvider;
+import com.journey.api_rest_v1.domain.users.PasswordResetToken;
 import com.journey.api_rest_v1.domain.users.RefreshToken;
 import com.journey.api_rest_v1.domain.users.User;
 import com.journey.api_rest_v1.dto.auth.AuthResponseDto;
+import com.journey.api_rest_v1.dto.auth.ChangePasswordRequest;
+import com.journey.api_rest_v1.dto.auth.ForgotPasswordRequest;
 import com.journey.api_rest_v1.dto.auth.LoginRequest;
 import com.journey.api_rest_v1.dto.auth.RegisterRequest;
+import com.journey.api_rest_v1.dto.auth.ResetPasswordRequest;
 import com.journey.api_rest_v1.dto.auth.UserDto;
 import com.journey.api_rest_v1.repository.AccessTokenRepository;
 import com.journey.api_rest_v1.repository.AuthIdentityRepository;
+import com.journey.api_rest_v1.repository.PasswordResetTokenRepository;
 import com.journey.api_rest_v1.repository.RefreshTokenRepository;
 import com.journey.api_rest_v1.repository.UserRepository;
+import com.journey.api_rest_v1.security.RateLimiter;
+import com.journey.api_rest_v1.security.TooManyRequestsException;
 import com.journey.api_rest_v1.service.AuthService;
+import com.journey.api_rest_v1.service.PasswordResetRequestedEvent;
 
 /**
  * Default {@link AuthService}: bcrypt passwords, HS256 access JWTs, and rotating refresh tokens.
@@ -52,12 +61,26 @@ public class AuthServiceImpl implements AuthService {
     private static final Duration ROTATION_GRACE = Duration.ofSeconds(10);
     private static final String SCOPE_USER = "user";
     private static final String SCOPE_ADMIN = "admin";
+    private static final Duration RESET_TOKEN_LIFETIME = Duration.ofMinutes(30);
+    /** At most this many reset emails per account per RESET_WINDOW, so the form cannot be used to spam. */
+    private static final int MAX_RESETS_PER_WINDOW = 3;
+    private static final Duration RESET_WINDOW = Duration.ofMinutes(15);
+    /**
+     * Failed sign-ins allowed per account (username or email) per 15 minutes, from any number of IPs. Stops
+     * slow password guessing spread across many addresses; the per-IP limit is in RateLimitFilter.
+     */
+    private static final RateLimiter.Rule FAILED_LOGINS_PER_ACCOUNT =
+            new RateLimiter.Rule("login-account", 10, Duration.ofMinutes(15));
+    private static final String INVALID_RESET = "This reset link is invalid or has expired. Please request a new one.";
 
     private final UserRepository userRepository;
     private final AuthIdentityRepository identityRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final AccessTokenRepository accessTokenRepository;
+    private final PasswordResetTokenRepository resetTokenRepository;
+    private final ApplicationEventPublisher events;
     private final PasswordEncoder passwordEncoder;
+    private final RateLimiter rateLimiter;
     private final JwtEncoder jwtEncoder;
     private final AuthProperties properties;
     /** Compared against when the user does not exist, so a missing user takes as long as a wrong password. */
@@ -68,14 +91,20 @@ public class AuthServiceImpl implements AuthService {
             AuthIdentityRepository identityRepository,
             RefreshTokenRepository refreshTokenRepository,
             AccessTokenRepository accessTokenRepository,
+            PasswordResetTokenRepository resetTokenRepository,
+            ApplicationEventPublisher events,
             PasswordEncoder passwordEncoder,
+            RateLimiter rateLimiter,
             JwtEncoder jwtEncoder,
             AuthProperties properties) {
         this.userRepository = userRepository;
         this.identityRepository = identityRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.accessTokenRepository = accessTokenRepository;
+        this.resetTokenRepository = resetTokenRepository;
+        this.events = events;
         this.passwordEncoder = passwordEncoder;
+        this.rateLimiter = rateLimiter;
         this.jwtEncoder = jwtEncoder;
         this.properties = properties;
         this.dummyHash = passwordEncoder.encode(TokenHashing.newToken());
@@ -117,12 +146,22 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public Session login(LoginRequest request, ClientInfo client) {
+        // Keyed by what was typed (also for unknown accounts), so the limit says nothing about which exist.
+        String accountKey = request.login() == null ? "" : request.login().trim().toLowerCase(Locale.ROOT);
+        RateLimiter.Decision allowed = rateLimiter.check(FAILED_LOGINS_PER_ACCOUNT, accountKey);
+        if (!allowed.allowed()) {
+            throw new TooManyRequestsException("Too many failed sign-in attempts for this account. Try again in "
+                    + Math.max(1, (allowed.retryAfterSeconds() + 59) / 60) + " minute(s), or reset your password.",
+                    allowed.retryAfterSeconds());
+        }
         AuthIdentity identity = findPasswordIdentity(request.login());
         if (identity == null || identity.getPasswordHash() == null) {
             passwordEncoder.matches(request.password(), dummyHash);
+            rateLimiter.tryConsume(FAILED_LOGINS_PER_ACCOUNT, accountKey);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_LOGIN);
         }
         if (!passwordEncoder.matches(request.password(), identity.getPasswordHash())) {
+            rateLimiter.tryConsume(FAILED_LOGINS_PER_ACCOUNT, accountKey);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, INVALID_LOGIN);
         }
         User user = identity.getUser();
@@ -189,6 +228,74 @@ public class AuthServiceImpl implements AuthService {
         String username = identityRepository.findByUser_IdAndProvider(userId, AuthProvider.PASSWORD)
                 .map(AuthIdentity::getProviderSubject).orElse(null);
         return toUserDto(user, username);
+    }
+
+    @Override
+    @Transactional
+    public Session changePassword(UUID userId, ChangePasswordRequest request, ClientInfo client) {
+        checkPasswordLength(request.new_password());
+        AuthIdentity identity = identityRepository.findByUser_IdAndProvider(userId, AuthProvider.PASSWORD)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "This account has no password"));
+        // 400 rather than 401: a 401 would make clients think the session ended and sign the user out.
+        if (!passwordEncoder.matches(request.current_password(), identity.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is wrong");
+        }
+        if (passwordEncoder.matches(request.new_password(), identity.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The new password must be different");
+        }
+        setPassword(identity, request.new_password(), "password_changed");
+        identity.setLastUsedAt(now());
+        return issueSession(identity.getUser(), identity, UUID.randomUUID(), client, null);
+    }
+
+    @Override
+    @Transactional
+    public void requestPasswordReset(ForgotPasswordRequest request, ClientInfo client) {
+        OffsetDateTime now = now();
+        userRepository.findByEmailIgnoreCase(request.email().trim())
+                .filter(user -> user.getDisabledAt() == null)
+                .flatMap(user -> identityRepository.findByUser_IdAndProvider(user.getId(), AuthProvider.PASSWORD))
+                .filter(identity -> resetTokenRepository.countByUserIdAndCreatedAtAfter(
+                        identity.getUser().getId(), now.minus(RESET_WINDOW)) < MAX_RESETS_PER_WINDOW)
+                .ifPresent(identity -> {
+                    User user = identity.getUser();
+                    resetTokenRepository.invalidateAllForUser(user.getId(), now);
+                    String rawToken = TokenHashing.newToken();
+                    PasswordResetToken token = new PasswordResetToken();
+                    token.setUserId(user.getId());
+                    token.setTokenHash(TokenHashing.sha256(rawToken));
+                    token.setExpiresAt(now.plus(RESET_TOKEN_LIFETIME));
+                    token.setRequestedIp(client.ipAddress());
+                    resetTokenRepository.save(token);
+                    events.publishEvent(new PasswordResetRequestedEvent(user.getEmail(), user.getDisplayName(),
+                            rawToken, RESET_TOKEN_LIFETIME.toMinutes()));
+                });
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        checkPasswordLength(request.new_password());
+        OffsetDateTime now = now();
+        PasswordResetToken token = resetTokenRepository.findByTokenHashForUpdate(TokenHashing.sha256(request.token()))
+                .filter(t -> t.getUsedAt() == null && t.getExpiresAt().isAfter(now))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_RESET));
+        AuthIdentity identity = identityRepository.findByUser_IdAndProvider(token.getUserId(), AuthProvider.PASSWORD)
+                .filter(i -> i.getUser().getDisabledAt() == null)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, INVALID_RESET));
+        token.setUsedAt(now);
+        setPassword(identity, request.new_password(), "password_reset");
+    }
+
+    /** Stores a new password hash and signs out every session; unused reset links stop working. */
+    private void setPassword(AuthIdentity identity, String newPassword, String reason) {
+        OffsetDateTime now = now();
+        UUID userId = identity.getUser().getId();
+        identity.setPasswordHash(passwordEncoder.encode(newPassword));
+        identity.setPasswordUpdatedAt(now);
+        resetTokenRepository.invalidateAllForUser(userId, now);
+        refreshTokenRepository.revokeAllForUser(userId, now, reason);
+        accessTokenRepository.revokeAllForUser(userId, now);
     }
 
     // ----------------------------

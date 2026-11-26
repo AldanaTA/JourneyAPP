@@ -15,12 +15,19 @@ services:
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
       ASSET_STORAGE_DIR: /data/assets
+      # Email goes to the Mailpit test server below unless .env names a real SMTP server.
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
     volumes:
       # Images written by the rules importer (agent-services mounts the same folder read-write).
       - ${ASSET_STORAGE_HOST_DIR:-../data/assets}:/data/assets:ro
     depends_on:
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     ports:
       - "8080:8080"
     healthcheck:
@@ -44,6 +51,24 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # Test mail server: catches every email the API sends (nothing reaches real inboxes).
+  # Read them at http://localhost:8025. Remove this service and set MAIL_* in .env to send real email.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: journey-mailpit
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
 volumes:
   redis-data:

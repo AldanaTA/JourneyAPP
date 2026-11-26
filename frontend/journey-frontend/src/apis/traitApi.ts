@@ -1,4 +1,5 @@
 import type { TraitCategory, TraitPage } from "../models/Trait";
+import { authorizedFetch } from "../auth/session";
 
 export type Operator = "lte" | "lt" | "eq" | "gt" | "gte";
 
@@ -21,11 +22,10 @@ export interface TraitFilterRequest {
   name: string | null;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/$/, "");
 
 /** Performs a trait API request and verifies the response is a page of traits. */
 async function requestTraits(path: string, init?: RequestInit): Promise<TraitPage> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  const response = await authorizedFetch(`${path}`, init);
   if (!response.ok) {
     throw new Error(`Trait API request failed: ${response.status} ${response.statusText}`);
   }

@@ -31,6 +31,9 @@ const CharactersSection = lazy(() => import("./sections/characters/CharactersSec
 const CampaignsSection = lazy(() => import("./sections/campaigns/CampaignsSection"))
 const RuleBookReader = lazy(() => import("./sections/game-library/rules/RuleBookReader"))
 const SignInPage = lazy(() => import("./sections/auth/SignInPage"))
+const ForgotPasswordPage = lazy(() => import("./sections/auth/ForgotPasswordPage"))
+const ResetPasswordPage = lazy(() => import("./sections/auth/ResetPasswordPage"))
+const AccountPage = lazy(() => import("./sections/auth/AccountPage"))
 
 /** Shown while a lazily loaded page is downloading. */
 function PageLoading() {
@@ -68,6 +71,9 @@ const appRoutes = (
     <Route path="/" element={<Navigate to="/library" replace />} />
     {/* Just signed in: the sign-in page sends the user on to where they were going. */}
     <Route path="/login" element={<SignInPage />} />
+    {/* A reset link may be opened while signed in; resetting signs this browser out too. */}
+    <Route path="/reset-password" element={<ResetPasswordPage />} />
+    <Route path="/account" element={<AccountPage />} />
     <Route path="/library" element={<GameLibrarySection />} />
     <Route path="/library/books/:bookId" element={<RuleBookReader />} />
     <Route path="/library/books/:bookId/chapters/:chapterId" element={<RuleBookReader />} />
@@ -112,6 +118,8 @@ function App() {
           <Suspense fallback={<PageLoading />}>
             <Routes>
               <Route path="/login" element={<SignInPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="*" element={<RedirectToSignIn />} />
             </Routes>
           </Suspense>
@@ -121,7 +129,12 @@ function App() {
   }
 
   const menuOptions: MenuOption[] = [
-    { label: "Account Settings", icon: Settings, description: "Profile & permissions" },
+    {
+      label: "Account Settings",
+      icon: Settings,
+      description: "Profile & password",
+      onSelect: closeMenuAnd(() => navigate("/account")),
+    },
     { label: "UI Settings", icon: SlidersHorizontal, description: "Theme & preferences" },
     {
       label: "Sign out",

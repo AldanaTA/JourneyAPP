@@ -4,8 +4,11 @@ import java.time.Duration;
 import java.util.UUID;
 
 import com.journey.api_rest_v1.dto.auth.AuthResponseDto;
+import com.journey.api_rest_v1.dto.auth.ChangePasswordRequest;
+import com.journey.api_rest_v1.dto.auth.ForgotPasswordRequest;
 import com.journey.api_rest_v1.dto.auth.LoginRequest;
 import com.journey.api_rest_v1.dto.auth.RegisterRequest;
+import com.journey.api_rest_v1.dto.auth.ResetPasswordRequest;
 import com.journey.api_rest_v1.dto.auth.UserDto;
 
 /**
@@ -36,4 +39,19 @@ public interface AuthService {
 
     /** Returns the given user. */
     UserDto getUser(UUID userId);
+
+    /**
+     * Changes the signed-in user's password after checking the current one. Every session of the user is
+     * signed out (other devices too) and a new session is returned for this one.
+     */
+    Session changePassword(UUID userId, ChangePasswordRequest request, ClientInfo client);
+
+    /**
+     * Emails a reset link if an account with that email exists. Always completes the same way, so callers
+     * cannot tell whether an account exists.
+     */
+    void requestPasswordReset(ForgotPasswordRequest request, ClientInfo client);
+
+    /** Sets a new password with a token from a reset email and signs out every session of the user. */
+    void resetPassword(ResetPasswordRequest request);
 }

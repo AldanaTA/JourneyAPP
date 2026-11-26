@@ -1,4 +1,5 @@
 import type { ItemPage, ItemRarity, ItemReferenceData, ItemType } from "../models/Item";
+import { authorizedFetch } from "../auth/session";
 
 /** Body sent to POST /items/filter-by-category; null/empty values are ignored by the backend. */
 export interface ItemFilterRequest {
@@ -15,11 +16,10 @@ export interface ItemFilterRequest {
   name: string | null;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/$/, "");
 
 /** Performs an item API request and verifies the response is a page of items. */
 async function requestItems(path: string, init?: RequestInit): Promise<ItemPage> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  const response = await authorizedFetch(`${path}`, init);
   if (!response.ok) {
     throw new Error(`Item API request failed: ${response.status} ${response.statusText}`);
   }
@@ -51,7 +51,7 @@ export function filterItems(filters: ItemFilterRequest, page = 0, size = 15): Pr
 
 /** Fetches the weapon types, weapon properties, and damage types (for filter options). */
 export async function getItemReferenceData(): Promise<ItemReferenceData> {
-  const response = await fetch(`${API_BASE_URL}/items/reference-data`);
+  const response = await authorizedFetch(`/items/reference-data`);
   if (!response.ok) {
     throw new Error(`Item API request failed: ${response.status} ${response.statusText}`);
   }

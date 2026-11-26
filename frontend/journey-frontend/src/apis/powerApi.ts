@@ -1,4 +1,5 @@
 import type { PowerPage, PowerType, PowerCategory } from "../models/Power";
+import { authorizedFetch } from "../auth/session";
 
 export type Operator = "lte" | "lt" | "eq" | "gt" | "gte";
 
@@ -19,10 +20,9 @@ export interface PowerFilterRequest {
   name: string | null;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/$/, "");
 
 async function requestPowers(path: string, init?: RequestInit): Promise<PowerPage> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  const response = await authorizedFetch(`${path}`, init);
   if (!response.ok) {
     throw new Error(`Power API request failed: ${response.status} ${response.statusText}`);
   }

@@ -40,4 +40,10 @@ public interface AccessTokenRepository extends JpaRepository<AccessToken, UUID> 
               AND refresh_token_id IN (SELECT id FROM refresh_tokens WHERE family_id = :familyId)
             """, nativeQuery = true)
     int revokeFamily(@Param("familyId") UUID familyId, @Param("now") OffsetDateTime now);
+
+    /** Revokes every access token of a user (password changed or reset). */
+    @Modifying
+    @Query(value = "UPDATE access_tokens SET revoked_at = :now WHERE user_id = :userId AND revoked_at IS NULL",
+            nativeQuery = true)
+    int revokeAllForUser(@Param("userId") UUID userId, @Param("now") OffsetDateTime now);
 }

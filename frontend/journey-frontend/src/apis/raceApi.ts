@@ -1,5 +1,6 @@
 import type { RacePage, RaceSize } from "../models/Race";
 import type { Operator } from "./traitApi";
+import { authorizedFetch } from "../auth/session";
 
 /** Body sent to POST /races/filter-by-category; null values are ignored by the backend. */
 export interface RaceFilterRequest {
@@ -13,11 +14,10 @@ export interface RaceFilterRequest {
   traitName: string | null;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/$/, "");
 
 /** Performs a race API request and verifies the response is a page of races. */
 async function requestRaces(path: string, init?: RequestInit): Promise<RacePage> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  const response = await authorizedFetch(`${path}`, init);
   if (!response.ok) {
     throw new Error(`Race API request failed: ${response.status} ${response.statusText}`);
   }

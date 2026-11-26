@@ -1,4 +1,5 @@
 import type { JobCategory, JobPage } from "../models/Job";
+import { authorizedFetch } from "../auth/session";
 
 /** Body sent to POST /jobs/filter-by-category; null values are ignored by the backend. */
 export interface JobFilterRequest {
@@ -13,11 +14,10 @@ export interface JobFilterRequest {
   traitName: string | null;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/$/, "");
 
 /** Performs a job API request and verifies the response is a page of jobs. */
 async function requestJobs(path: string, init?: RequestInit): Promise<JobPage> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  const response = await authorizedFetch(`${path}`, init);
   if (!response.ok) {
     throw new Error(`Job API request failed: ${response.status} ${response.statusText}`);
   }
