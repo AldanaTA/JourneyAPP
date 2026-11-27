@@ -50,7 +50,9 @@ import com.journey.api_rest_v1.repository.StatusConditionRepository;
 import com.journey.api_rest_v1.repository.TraitRepository;
 import com.journey.api_rest_v1.repository.WeaponPropertyRepository;
 import com.journey.api_rest_v1.service.CreatureService;
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
 import com.journey.api_rest_v1.specification.CreatureSpecifications;
+import com.journey.api_rest_v1.specification.SourceSpecifications;
 
 /**
  * Default {@link CreatureService} implementation backed by JPA, with Redis caching for reads.
@@ -62,6 +64,14 @@ import com.journey.api_rest_v1.specification.CreatureSpecifications;
  */
 @Service
 public class CreatureServiceImpl implements CreatureService {
+
+    /** Who may read campaign content (set by Spring). */
+    private ContentAccess contentAccess;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setContentAccess(ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
+    }
 
     private static final String DEFAULT_SORT_FIELD = "name";
 
@@ -168,7 +178,8 @@ public class CreatureServiceImpl implements CreatureService {
     @Cacheable(cacheNames = "creaturesAll", key = "#page + ':' + #size + ':' + #sortBy + ':' + #sortDir")
     public Page<CreatureResponseDto> getAllCreatures(int page, int size, String sortBy, String sortDir) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortBy));
-        return creatureRepository.findAll(pageable).map(creatureMapper::CreateResponse);
+        // Official content only, so this cached list is the same for everyone (campaign content: use the filter).
+        return creatureRepository.findAll(SourceSpecifications.<Creature>notInSources(contentAccess.campaignSources()), pageable).map(creatureMapper::CreateResponse);
     }
 
     /** Returns creature types for one source, or every source when contentSourceId is null/blank. */
@@ -177,8 +188,10 @@ public class CreatureServiceImpl implements CreatureService {
     @Cacheable(cacheNames = "creatureTypes", key = "#contentSourceId == null ? 'all' : #contentSourceId")
     public List<CreatureTypeDto> getCreatureTypes(String contentSourceId) {
         Sort byName = Sort.by(Sort.Direction.ASC, "name");
+        // Without a source: the official types only (each campaign has its own copies of them).
+        List<UUID> campaigns = contentAccess.campaignSources();
         List<CreatureType> types = contentSourceId == null || contentSourceId.isBlank()
-                ? creatureTypeRepository.findAll(byName)
+                ? creatureTypeRepository.findAll(byName).stream().filter(t -> !campaigns.contains(t.getSource().getId())).toList()
                 : creatureTypeRepository.findAllBySource_Id(parseUuid(contentSourceId, "content source"), byName);
         return types.stream().map(creatureMapper::CreateTypeResponse).toList();
     }
@@ -191,6 +204,8 @@ public class CreatureServiceImpl implements CreatureService {
     @Transactional(readOnly = true)
     public Page<CreatureResponseDto> filterCreatures(CreatureFilterRequest request) {
         Specification<Creature> specification = CreatureSpecifications.all()
+                .and(SourceSpecifications.<Creature>inSources(request.sourceIds()))
+                .and(SourceSpecifications.<Creature>notInSources(contentAccess.hiddenSources(ContentAccess.Kind.CREATURE)))
                 .and(CreatureSpecifications.withTypes(request.creatureTypes()))
                 .and(CreatureSpecifications.withThreatLvl(request.minThreatLvl(), request.maxThreatLvl()))
                 .and(CreatureSpecifications.withSizes(request.sizes()))

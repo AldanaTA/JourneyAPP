@@ -20,6 +20,8 @@ import com.journey.api_rest_v1.dto.creature.CreatureResponseDto;
 import com.journey.api_rest_v1.dto.creature.CreatureTypeDto;
 import com.journey.api_rest_v1.service.CreatureService;
 
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
+
 import jakarta.validation.Valid;
 
 /**
@@ -31,15 +33,18 @@ import jakarta.validation.Valid;
 public class CreatureController {
 
     private final CreatureService creatureService;
+    private final ContentAccess contentAccess;
 
     /** Wires the creature service. */
-    public CreatureController(CreatureService creatureService) {
+    public CreatureController(CreatureService creatureService, ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
         this.creatureService = creatureService;
     }
 
     /** Creates a creature and returns it with 201 Created. */
     @PostMapping()
     public ResponseEntity<CreatureResponseDto> createCreature(@Valid @RequestBody CreateCreatureRequest request) {
+        contentAccess.requireWritableSource(request.content_source_id());
         return new ResponseEntity<>(creatureService.createCreature(request), HttpStatus.CREATED);
     }
 
@@ -53,6 +58,7 @@ public class CreatureController {
     /** Returns a single creature by id. */
     @GetMapping("/{id}")
     public ResponseEntity<CreatureResponseDto> getCreature(@PathVariable String id) {
+        contentAccess.requireReadable(ContentAccess.Kind.CREATURE, id);
         return new ResponseEntity<>(creatureService.getCreatureById(id), HttpStatus.OK);
     }
 
@@ -76,12 +82,15 @@ public class CreatureController {
     @PutMapping("/{id}")
     public ResponseEntity<CreatureResponseDto> updateCreature(@PathVariable String id,
             @Valid @RequestBody CreateCreatureRequest request) {
+        contentAccess.requireWritable(ContentAccess.Kind.CREATURE, id);
+        contentAccess.requireWritableSource(request.content_source_id());
         return new ResponseEntity<>(creatureService.updateCreature(id, request), HttpStatus.OK);
     }
 
     /** Deletes a creature and returns a confirmation message. */
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteCreature(@PathVariable String id) {
+        contentAccess.requireWritable(ContentAccess.Kind.CREATURE, id);
         return ResponseEntity.ok(creatureService.deleteCreature(id));
     }
 }

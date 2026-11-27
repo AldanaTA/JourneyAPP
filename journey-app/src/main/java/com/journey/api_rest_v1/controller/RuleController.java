@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
+
 import com.journey.api_rest_v1.dto.rules.RuleBookDto;
 import com.journey.api_rest_v1.dto.rules.RuleChapterDto;
 import com.journey.api_rest_v1.dto.rules.RuleSearchResultDto;
@@ -26,7 +28,10 @@ public class RuleController {
     private final RuleService ruleService;
 
     /** Wires the rule service. */
-    public RuleController(RuleService ruleService) {
+    private final ContentAccess contentAccess;
+
+    public RuleController(RuleService ruleService, ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
         this.ruleService = ruleService;
     }
 
@@ -39,12 +44,14 @@ public class RuleController {
     /** Returns one book with its chapters in reading order. */
     @GetMapping("/books/{id}")
     public ResponseEntity<RuleBookDto> getBookById(@PathVariable String id) {
+        contentAccess.requireReadable(ContentAccess.Kind.BOOK, id);
         return new ResponseEntity<>(ruleService.getBookById(id), HttpStatus.OK);
     }
 
     /** Returns a chapter's sections plus the entities and images they reference. */
     @GetMapping("/chapters/{id}")
     public ResponseEntity<RuleChapterDto> getChapterById(@PathVariable String id) {
+        contentAccess.requireReadable(ContentAccess.Kind.CHAPTER, id);
         return new ResponseEntity<>(ruleService.getChapterById(id), HttpStatus.OK);
     }
 

@@ -20,7 +20,9 @@ public record CreatureFilterRequest(
     List<String> immuneTo,
     Integer page,
     Integer size,
-    String name
+    String name,
+    /** Only creatures from these sources (e.g. one campaign's); empty = every source the caller can read. */
+    List<String> sourceIds
 ) {
     /** Returns the requested page, defaulting to the first page. */
     public int getPage() {

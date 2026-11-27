@@ -34,6 +34,7 @@ import com.journey.api_rest_v1.mapper.TraitMapper;
 import com.journey.api_rest_v1.repository.ContentSourceRepository;
 import com.journey.api_rest_v1.repository.TraitRepository;
 import com.journey.api_rest_v1.service.TraitService;
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
 import com.journey.api_rest_v1.specification.SourceSpecifications;
 import com.journey.api_rest_v1.specification.TraitSpecifications;
 
@@ -43,6 +44,14 @@ import com.journey.api_rest_v1.specification.TraitSpecifications;
  */
 @Service
 public class TraitServiceImpl implements TraitService {
+
+    /** Who may read campaign content (set by Spring). */
+    private ContentAccess contentAccess;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setContentAccess(ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
+    }
 
     private static final String DEFAULT_SORT_FIELD = "traitName";
 
@@ -168,7 +177,8 @@ public class TraitServiceImpl implements TraitService {
     @Cacheable(cacheNames = "traitsAll", key = "#page + ':' + #size + ':' + #sortBy + ':' + #sortDir")
     public Page<TraitResponseDto> getAllTraits(int page, int size, String sortBy, String sortDir) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortBy));
-        return traitRepository.findAll(pageable).map(traitMapper::CreateResponse);
+        // Official content only, so this cached list is the same for everyone (campaign content: use the filter).
+        return traitRepository.findAll(SourceSpecifications.<Trait>notInSources(contentAccess.campaignSources()), pageable).map(traitMapper::CreateResponse);
     }
 
     /** Returns traits matching any/all of the given categories, sorted by name. */
@@ -193,7 +203,8 @@ public class TraitServiceImpl implements TraitService {
     @Override
     @Transactional(readOnly = true)
     public Page<TraitResponseDto> filterTraits(TraitFilterRequest request) {
-        Specification<Trait> specification = TraitSpecifications.all().and(SourceSpecifications.<Trait>inSources(request.sourceIds()));
+        Specification<Trait> specification = TraitSpecifications.all().and(SourceSpecifications.<Trait>inSources(request.sourceIds()))
+                .and(SourceSpecifications.<Trait>notInSources(contentAccess.hiddenSources(ContentAccess.Kind.TRAIT)));
 
         if (request.categories() != null && !request.categories().isEmpty()) {
             specification = specification.and(

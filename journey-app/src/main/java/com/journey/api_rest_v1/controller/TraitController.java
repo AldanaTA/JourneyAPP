@@ -17,6 +17,8 @@ import com.journey.api_rest_v1.dto.trait.TraitFilterRequest;
 import com.journey.api_rest_v1.dto.trait.TraitResponseDto;
 import com.journey.api_rest_v1.service.TraitService;
 
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
+
 import jakarta.validation.Valid;
 
 /**
@@ -28,21 +30,25 @@ import jakarta.validation.Valid;
 public class TraitController {
 
     private final TraitService traitService;
+    private final ContentAccess contentAccess;
 
     /** Wires the trait service. */
-    public TraitController(TraitService traitService) {
+    public TraitController(TraitService traitService, ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
         this.traitService = traitService;
     }
 
     /** Creates a trait and returns it with 201 Created. */
     @PostMapping()
     public ResponseEntity<TraitResponseDto> createTrait(@Valid @RequestBody CreateTraitRequest request) {
+        contentAccess.requireWritableSource(request.content_source_id());
         return new ResponseEntity<>(traitService.createTrait(request), HttpStatus.CREATED);
     }
 
     /** Returns a single trait by id. */
     @GetMapping("/{id}")
     public ResponseEntity<TraitResponseDto> getTrait(@PathVariable String id) {
+        contentAccess.requireReadable(ContentAccess.Kind.TRAIT, id);
         return new ResponseEntity<>(traitService.getTraitById(id), HttpStatus.OK);
     }
 
@@ -66,12 +72,15 @@ public class TraitController {
     @PutMapping("/{id}")
     public ResponseEntity<TraitResponseDto> updateTrait(@PathVariable String id,
             @Valid @RequestBody CreateTraitRequest request) {
+        contentAccess.requireWritable(ContentAccess.Kind.TRAIT, id);
+        contentAccess.requireWritableSource(request.content_source_id());
         return new ResponseEntity<>(traitService.updateTrait(id, request), HttpStatus.OK);
     }
 
     /** Deletes a trait and returns a confirmation message. */
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteTrait(@PathVariable String id) {
+        contentAccess.requireWritable(ContentAccess.Kind.TRAIT, id);
         return ResponseEntity.ok(traitService.deleteTrait(id));
     }
 }

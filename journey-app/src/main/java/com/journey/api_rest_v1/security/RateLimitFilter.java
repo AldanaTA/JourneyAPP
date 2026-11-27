@@ -32,7 +32,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /** A rule for one endpoint (method + exact path). */
     private record EndpointRule(HttpMethod method, String path, Rule rule) {
         boolean matches(HttpServletRequest request) {
-            return method.matches(request.getMethod()) && path.equals(request.getRequestURI());
+            // A path ending in "/**" matches everything under it (e.g. join codes).
+            return method.matches(request.getMethod()) && (path.endsWith("/**")
+                    ? request.getRequestURI().startsWith(path.substring(0, path.length() - 2))
+                    : path.equals(request.getRequestURI()));
         }
     }
 
@@ -44,7 +47,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         new EndpointRule(HttpMethod.POST, "/api/v1/auth/password/forgot", new Rule("forgot", 5, Duration.ofMinutes(15))),
         new EndpointRule(HttpMethod.POST, "/api/v1/auth/password/reset", new Rule("reset", 10, Duration.ofMinutes(15))),
         new EndpointRule(HttpMethod.POST, "/api/v1/auth/password", new Rule("change-password", 10, Duration.ofMinutes(15))),
-        new EndpointRule(HttpMethod.POST, "/api/v1/auth/refresh", new Rule("refresh", 60, Duration.ofMinutes(1))));
+        new EndpointRule(HttpMethod.POST, "/api/v1/auth/refresh", new Rule("refresh", 60, Duration.ofMinutes(1))),
+        // Join links: slows down guessing codes.
+        new EndpointRule(HttpMethod.GET, "/api/v1/campaigns/join/**", new Rule("join-preview", 30, Duration.ofMinutes(1))),
+        new EndpointRule(HttpMethod.POST, "/api/v1/campaigns/join/**", new Rule("join", 10, Duration.ofMinutes(1))));
 
     private final RateLimiter limiter;
     private final boolean enabled;

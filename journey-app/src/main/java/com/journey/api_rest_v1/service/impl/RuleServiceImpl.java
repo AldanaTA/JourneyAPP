@@ -50,6 +50,7 @@ import com.journey.api_rest_v1.repository.PowerRepository;
 import com.journey.api_rest_v1.repository.RaceRepository;
 import com.journey.api_rest_v1.repository.RuleChapterRepository;
 import com.journey.api_rest_v1.repository.RuleSectionEntityRepository;
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
 import com.journey.api_rest_v1.repository.RuleSectionRepository;
 import com.journey.api_rest_v1.repository.TraitRepository;
 import com.journey.api_rest_v1.service.RuleService;
@@ -66,6 +67,14 @@ import com.journey.api_rest_v1.service.RuleService;
  */
 @Service
 public class RuleServiceImpl implements RuleService {
+
+    /** Who may read campaign rules (set by Spring). */
+    private ContentAccess contentAccess;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setContentAccess(ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
+    }
 
     private static final int MAX_SEARCH_RESULTS = 50;
 
@@ -195,7 +204,9 @@ public class RuleServiceImpl implements RuleService {
         }
         int boundedLimit = Math.max(1, Math.min(limit, MAX_SEARCH_RESULTS));
 
-        return sectionRepository.search(query.trim(), bookFilter, boundedLimit).stream()
+        // Leave out the chapters of campaigns the caller is not a member of.
+        String hidden = String.join(",", contentAccess.hiddenSources(ContentAccess.Kind.CHAPTER).stream().map(UUID::toString).toList());
+        return sectionRepository.search(query.trim(), bookFilter, boundedLimit, hidden).stream()
                 .map(row -> new RuleSearchResultDto(
                         row.getSectionId().toString(),
                         row.getSectionTitle(),
@@ -264,7 +275,7 @@ public class RuleServiceImpl implements RuleService {
     }
 
     /** Turns a ts_headline fragment of a Markdown body into plain text (keeping the « » match markers). */
-    static String cleanSnippet(String snippet) {
+    public static String cleanSnippet(String snippet) {
         if (snippet == null) {
             return "";
         }

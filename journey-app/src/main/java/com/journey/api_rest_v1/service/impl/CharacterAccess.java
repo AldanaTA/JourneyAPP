@@ -34,11 +34,17 @@ public class CharacterAccess {
         this.entityManager = entityManager;
     }
 
-    /** The signed-in user's character with this id; 404 if it does not exist or is not theirs. */
+    /**
+     * A character the signed-in user may open and change: their own, or a campaign version in a campaign they
+     * are a storyteller of (for level-ups and rulings). 404 otherwise.
+     */
     public PlayerCharacter loadOwned(String id) {
         UUID characterId = parseUuid(id, "character");
+        UUID userId = currentUser.requireId();
         return characterRepository.findById(characterId)
-                .filter(character -> character.getUserId().equals(currentUser.requireId()))
+                .filter(character -> character.getUserId().equals(userId)
+                        || (character.getCampaignId() != null
+                            && characterRepository.isCampaignStoryteller(character.getCampaignId(), userId)))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Character not found"));
     }
 

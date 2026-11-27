@@ -21,6 +21,19 @@ public interface PlayerCharacterRepository extends JpaRepository<PlayerCharacter
 
     List<PlayerCharacter> findByUserIdOrderByUpdatedAtDesc(UUID userId);
 
+    /** The user's own characters, without their campaign versions. */
+    List<PlayerCharacter> findByUserIdAndCampaignIdIsNullOrderByUpdatedAtDesc(UUID userId);
+
+    /** True when the user is a storyteller (owner or co-storyteller) of the campaign. */
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 FROM content_sources s WHERE s.id = :campaignId AND CAST(s.kind AS TEXT) = 'campaign'
+                  AND (s.owner_user_id = :userId OR EXISTS (
+                      SELECT 1 FROM source_members m WHERE m.source_id = s.id AND m.user_id = :userId
+                        AND CAST(m.role AS TEXT) IN ('owner', 'editor'))))
+            """, nativeQuery = true)
+    boolean isCampaignStoryteller(@Param("campaignId") UUID campaignId, @Param("userId") UUID userId);
+
     /** One row of {@code character_point_budget}. */
     interface BudgetView {
         Integer getTotalExp();

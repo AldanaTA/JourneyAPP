@@ -45,6 +45,8 @@ import com.journey.api_rest_v1.repository.PowerRepository;
 import com.journey.api_rest_v1.repository.RaceRepository;
 import com.journey.api_rest_v1.repository.TraitRepository;
 import com.journey.api_rest_v1.service.CurrentUser;
+import com.journey.api_rest_v1.service.campaign.CampaignContentCheck;
+import com.journey.api_rest_v1.dto.campaign.ContentIssueDto;
 
 /**
  * Saves a whole character in one transaction (PUT /characters/{id}): the editor keeps the character in the
@@ -84,6 +86,7 @@ public class CharacterSaveService {
     private final CharacterAccess access;
     private final CharacterAssembler assembler;
     private final CurrentUser currentUser;
+    private final CampaignContentCheck campaignContent;
 
     public CharacterSaveService(PlayerCharacterRepository characterRepository,
             CharacterSheetRepository sheetRepository,
@@ -100,7 +103,9 @@ public class CharacterSaveService {
             CharacterInventoryServiceImpl inventoryService,
             CharacterAccess access,
             CharacterAssembler assembler,
-            CurrentUser currentUser) {
+            CurrentUser currentUser,
+            CampaignContentCheck campaignContent) {
+        this.campaignContent = campaignContent;
         this.characterRepository = characterRepository;
         this.sheetRepository = sheetRepository;
         this.jobRepository = jobRepository;
@@ -270,6 +275,15 @@ public class CharacterSaveService {
             if (racial > CharacterServiceImpl.MIXED_RACE_TRAIT_EXP) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A mixed race picks racial traits worth "
                         + CharacterServiceImpl.MIXED_RACE_TRAIT_EXP + " EXP, not " + racial);
+            }
+        }
+        // A campaign version may only use what its campaign allows.
+        if (c.getCampaignId() != null) {
+            List<ContentIssueDto> issues = campaignContent.issues(characterId, c.getCampaignId());
+            if (!issues.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not allowed in this campaign: "
+                        + issues.stream().map(i -> i.name() + " (" + i.source() + ")").distinct()
+                                .collect(Collectors.joining(", ")) + ". Remove it to save.");
             }
         }
         PlayerCharacter saved = characterRepository.findById(characterId).orElseThrow();

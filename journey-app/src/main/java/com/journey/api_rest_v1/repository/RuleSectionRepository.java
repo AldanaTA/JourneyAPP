@@ -60,11 +60,13 @@ public interface RuleSectionRepository extends JpaRepository<RuleSection, UUID> 
             JOIN rule_chapters c ON c.id = s.chapter_id,
                  websearch_to_tsquery('english', :query) q
             WHERE s.search_vector @@ q
+              AND NOT (CAST(c.source_id AS TEXT) = ANY(string_to_array(:hiddenSources, ',')))
               AND (CAST(:bookId AS uuid) IS NULL OR EXISTS (
                     SELECT 1 FROM book_chapters bc
                     WHERE bc.chapter_id = c.id AND bc.book_id = CAST(:bookId AS uuid)))
             ORDER BY rank DESC, c.title, s.sort_order
             LIMIT :limit
             """, nativeQuery = true)
-    List<SearchRow> search(@Param("query") String query, @Param("bookId") String bookId, @Param("limit") int limit);
+    List<SearchRow> search(@Param("query") String query, @Param("bookId") String bookId, @Param("limit") int limit,
+            @Param("hiddenSources") String hiddenSources);
 }

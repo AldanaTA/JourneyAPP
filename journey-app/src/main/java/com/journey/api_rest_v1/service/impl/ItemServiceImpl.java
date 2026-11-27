@@ -42,6 +42,7 @@ import com.journey.api_rest_v1.repository.ItemRepository;
 import com.journey.api_rest_v1.repository.WeaponPropertyRepository;
 import com.journey.api_rest_v1.repository.WeaponTypeRepository;
 import com.journey.api_rest_v1.service.ItemService;
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
 import com.journey.api_rest_v1.specification.SourceSpecifications;
 import com.journey.api_rest_v1.specification.ItemSpecifications;
 
@@ -56,6 +57,14 @@ import com.journey.api_rest_v1.specification.ItemSpecifications;
  */
 @Service
 public class ItemServiceImpl implements ItemService {
+
+    /** Who may read campaign content (set by Spring). */
+    private ContentAccess contentAccess;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setContentAccess(ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
+    }
 
     private static final String DEFAULT_SORT_FIELD = "name";
 
@@ -160,7 +169,8 @@ public class ItemServiceImpl implements ItemService {
     @Cacheable(cacheNames = "itemsAll", key = "#page + ':' + #size + ':' + #sortBy + ':' + #sortDir")
     public Page<ItemResponseDto> getAllItems(int page, int size, String sortBy, String sortDir) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortBy));
-        return itemRepository.findAll(pageable).map(itemMapper::CreateResponse);
+        // Official content only, so this cached list is the same for everyone (campaign content: use the filter).
+        return itemRepository.findAll(SourceSpecifications.<Item>notInSources(contentAccess.campaignSources()), pageable).map(itemMapper::CreateResponse);
     }
 
     /** Returns every weapon type, weapon property, and damage type, sorted by name. */
@@ -185,6 +195,7 @@ public class ItemServiceImpl implements ItemService {
     public Page<ItemResponseDto> filterItems(ItemFilterRequest request) {
         Specification<Item> specification = ItemSpecifications.all()
                 .and(SourceSpecifications.<Item>inSources(request.sourceIds()))
+                .and(SourceSpecifications.<Item>notInSources(contentAccess.hiddenSources(ContentAccess.Kind.ITEM)))
                 .and(ItemSpecifications.withTypes(request.itemTypes()))
                 .and(ItemSpecifications.withRarities(request.rarities()))
                 .and(ItemSpecifications.magicOnly(request.getMagicOnly()))

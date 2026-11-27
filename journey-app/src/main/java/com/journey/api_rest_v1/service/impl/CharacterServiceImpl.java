@@ -148,7 +148,7 @@ public class CharacterServiceImpl implements CharacterService {
     @Override
     @Transactional(readOnly = true)
     public List<CharacterSummaryDto> listMine() {
-        List<PlayerCharacter> characters = characterRepository.findByUserIdOrderByUpdatedAtDesc(currentUser.requireId());
+        List<PlayerCharacter> characters = characterRepository.findByUserIdAndCampaignIdIsNullOrderByUpdatedAtDesc(currentUser.requireId());
         Map<UUID, String> jobNames = jobRepository.findAllById(characters.stream().map(PlayerCharacter::getJobId)
                 .filter(Objects::nonNull).collect(Collectors.toSet())).stream()
                 .collect(Collectors.toMap(Job::getId, Job::getJobName));

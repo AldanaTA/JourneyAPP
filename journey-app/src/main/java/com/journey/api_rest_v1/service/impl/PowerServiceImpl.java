@@ -36,6 +36,7 @@ import com.journey.api_rest_v1.repository.ContentSourceRepository;
 import com.journey.api_rest_v1.repository.PowerCategoriesRepository;
 import com.journey.api_rest_v1.repository.PowerRepository;
 import com.journey.api_rest_v1.service.PowerService;
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
 import com.journey.api_rest_v1.specification.SourceSpecifications;
 import com.journey.api_rest_v1.specification.PowerSpecifications;
 
@@ -44,6 +45,14 @@ import com.journey.api_rest_v1.specification.PowerSpecifications;
  */
 @Service
 public class PowerServiceImpl implements PowerService {
+
+    /** Who may read campaign content (set by Spring). */
+    private ContentAccess contentAccess;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setContentAccess(ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
+    }
 
     private final PowerRepository powerRepository;
     private final PowerCategoriesRepository powerCategoriesRepository;
@@ -201,7 +210,8 @@ public class PowerServiceImpl implements PowerService {
     @Cacheable(cacheNames = "powersAll", key = "#page + ':' + #size + ':' + #sortBy + ':' + #sortDir")
     public Page<PowerResponseDto> getAllPowers(int page, int size, String sortBy, String sortDir) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortBy));
-        return powerRepository.findAll(pageable).map(powerMapper::CreateResponse);
+        // Official content only, so this cached list is the same for everyone (campaign content: use the filter).
+        return powerRepository.findAll(SourceSpecifications.<Power>notInSources(contentAccess.campaignSources()), pageable).map(powerMapper::CreateResponse);
     }
 
     /** Returns powers matching any/all of the given categories, sorted by name. */
@@ -226,7 +236,8 @@ public class PowerServiceImpl implements PowerService {
     @Transactional(readOnly = true)
     public Page<PowerResponseDto> filterPowers(PowerFilterRequest request) {
         Specification<Power> specification = PowerSpecifications.withType(request.type())
-                .and(SourceSpecifications.<Power>inSources(request.sourceIds()));
+                .and(SourceSpecifications.<Power>inSources(request.sourceIds()))
+                .and(SourceSpecifications.<Power>notInSources(contentAccess.hiddenSources(ContentAccess.Kind.POWER)));
 
         if (request.categories() != null && !request.categories().isEmpty()) {
             specification = specification.and(PowerSpecifications.withCategories(request.categories(), request.getMatchAll()));

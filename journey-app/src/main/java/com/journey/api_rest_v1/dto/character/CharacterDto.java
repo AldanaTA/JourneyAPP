@@ -29,6 +29,8 @@ public record CharacterDto(
     String learnedLanguages,
     /** The content sources (besides the core rules) the character is built from. */
     List<String> sourceIds,
+    /** The campaign this is a campaign version for; null for the player's own characters. */
+    NamedRefDto campaign,
     int startingExp,
     int jobPoints,
     CharacterCapacitiesDto capacities,

@@ -36,6 +36,7 @@ import com.journey.api_rest_v1.dto.character.CharacterTraitDto;
 import com.journey.api_rest_v1.dto.character.NamedRefDto;
 import com.journey.api_rest_v1.repository.CharacterAttributeRepository;
 import com.journey.api_rest_v1.repository.CharacterPowerRepository;
+import com.journey.api_rest_v1.repository.ContentSourceRepository;
 import com.journey.api_rest_v1.repository.CharacterRaceRepository;
 import com.journey.api_rest_v1.repository.CharacterSheetRepository;
 import com.journey.api_rest_v1.repository.CharacterSkillRepository;
@@ -70,6 +71,8 @@ public class CharacterAssembler {
     private final CharacterPowerRepository characterPowerRepository;
 
     /** Wires the repositories the sheet reads from. */
+    private final ContentSourceRepository sourceRepository;
+
     public CharacterAssembler(PlayerCharacterRepository characterRepository,
             CharacterSheetRepository sheetRepository,
             JobRepository jobRepository,
@@ -81,7 +84,9 @@ public class CharacterAssembler {
             TraitRepository traitRepository,
             CharacterTraitRepository characterTraitRepository,
             PowerRepository powerRepository,
-            CharacterPowerRepository characterPowerRepository) {
+            CharacterPowerRepository characterPowerRepository,
+            ContentSourceRepository sourceRepository) {
+        this.sourceRepository = sourceRepository;
         this.characterRepository = characterRepository;
         this.sheetRepository = sheetRepository;
         this.jobRepository = jobRepository;
@@ -126,6 +131,8 @@ public class CharacterAssembler {
                 languageRace == null ? null : languageRace.getLanguages(),
                 c.getLearnedLanguages(),
                 characterRepository.findSourceIds(id).stream().map(UUID::toString).toList(),
+                c.getCampaignId() == null ? null : sourceRepository.findById(c.getCampaignId())
+                        .map(s -> new NamedRefDto(s.getId().toString(), s.getSource_name())).orElse(null),
                 c.getStartingExp(), c.getJobPoints(),
                 new CharacterCapacitiesDto(c.getCurrentHp(), c.getCurrentWp(), c.getCurrentEp(), c.getCurrentMp(),
                         c.getTempHp(), c.getHpBonus(), c.getWpBonus(), c.getEpBonus(), c.getMpBonus(),

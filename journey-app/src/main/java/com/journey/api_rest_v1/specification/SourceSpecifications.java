@@ -23,6 +23,14 @@ public final class SourceSpecifications {
         return (root, query, cb) -> root.get("source").get("id").in(ids);
     }
 
+    /** Content not from these sources; matches everything when the list is empty. */
+    public static <T> Specification<T> notInSources(List<UUID> sourceIds) {
+        if (sourceIds == null || sourceIds.isEmpty()) {
+            return (root, query, cb) -> cb.conjunction();
+        }
+        return (root, query, cb) -> cb.not(root.get("source").get("id").in(sourceIds));
+    }
+
     private static UUID parse(String value) {
         try {
             return UUID.fromString(value.trim());

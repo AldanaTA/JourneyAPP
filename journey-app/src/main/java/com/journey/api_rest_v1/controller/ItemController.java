@@ -18,6 +18,8 @@ import com.journey.api_rest_v1.dto.item.ItemReferenceDataDto;
 import com.journey.api_rest_v1.dto.item.ItemResponseDto;
 import com.journey.api_rest_v1.service.ItemService;
 
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
+
 import jakarta.validation.Valid;
 
 /**
@@ -30,15 +32,18 @@ import jakarta.validation.Valid;
 public class ItemController {
 
     private final ItemService itemService;
+    private final ContentAccess contentAccess;
 
     /** Wires the item service. */
-    public ItemController(ItemService itemService) {
+    public ItemController(ItemService itemService, ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
         this.itemService = itemService;
     }
 
     /** Creates an item (optionally based on another item) and returns it with 201 Created. */
     @PostMapping()
     public ResponseEntity<ItemResponseDto> createItem(@Valid @RequestBody CreateItemRequest request) {
+        contentAccess.requireWritableSource(request.content_source_id());
         return new ResponseEntity<>(itemService.createItem(request), HttpStatus.CREATED);
     }
 
@@ -51,6 +56,7 @@ public class ItemController {
     /** Returns a single item by id, with inheritance resolved. */
     @GetMapping("/{id}")
     public ResponseEntity<ItemResponseDto> getItem(@PathVariable String id) {
+        contentAccess.requireReadable(ContentAccess.Kind.ITEM, id);
         return new ResponseEntity<>(itemService.getItemById(id), HttpStatus.OK);
     }
 
@@ -74,12 +80,15 @@ public class ItemController {
     @PutMapping("/{id}")
     public ResponseEntity<ItemResponseDto> updateItem(@PathVariable String id,
             @Valid @RequestBody CreateItemRequest request) {
+        contentAccess.requireWritable(ContentAccess.Kind.ITEM, id);
+        contentAccess.requireWritableSource(request.content_source_id());
         return new ResponseEntity<>(itemService.updateItem(id, request), HttpStatus.OK);
     }
 
     /** Deletes an item that no other item is based on or made of. */
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteItem(@PathVariable String id) {
+        contentAccess.requireWritable(ContentAccess.Kind.ITEM, id);
         return ResponseEntity.ok(itemService.deleteItem(id));
     }
 }

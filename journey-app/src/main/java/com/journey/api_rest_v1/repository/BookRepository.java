@@ -13,11 +13,12 @@ import com.journey.api_rest_v1.domain.rules.Book;
 @Repository
 public interface BookRepository extends JpaRepository<Book, UUID> {
 
-    /** Returns every book, core rules first, then by title. */
+    /** Returns every official book (not campaigns' own), core rules first, then by title. */
     @Query(value = """
             SELECT b.*
             FROM books b
             JOIN content_sources s ON s.id = b.source_id
+            WHERE CAST(s.kind AS TEXT) <> 'campaign'
             ORDER BY (s.kind = 'core') DESC, b.title_key
             """, nativeQuery = true)
     List<Book> findAllInLibraryOrder();

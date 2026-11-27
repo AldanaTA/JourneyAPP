@@ -37,6 +37,14 @@ public class SecurityConfig {
         "/api/v1/rules/**", "/api/v1/assets/**",
     };
 
+    /**
+     * Content campaigns can have their own of: any signed-in user reaches the write endpoints, which then allow
+     * admins (official content) and a campaign's storytellers (that campaign's content) only (see ContentAccess).
+     */
+    private static final String[] CAMPAIGN_CONTENT = {
+        "/api/v1/traits/**", "/api/v1/powers/**", "/api/v1/items/**", "/api/v1/creatures/**",
+    };
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -52,6 +60,7 @@ public class SecurityConfig {
                         "/api/v1/auth/password/forgot", "/api/v1/auth/password/reset").permitAll()
                 .requestMatchers(HttpMethod.GET, CONTENT).authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/v1/*/filter-by-category").authenticated()
+                .requestMatchers(CAMPAIGN_CONTENT).authenticated()
                 .requestMatchers(CONTENT).hasAuthority("SCOPE_admin")
                 .anyRequest().authenticated())
             .oauth2ResourceServer(resource -> resource.jwt(jwt -> jwt.jwtAuthenticationConverter(new JwtAuthenticationConverter())));

@@ -32,6 +32,14 @@ public class PlayerCharacter {
     @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
     private UUID userId;
 
+    /** The campaign this is a campaign version for (null for the player's own characters). Set by the database. */
+    @Column(name = "campaign_id", insertable = false, updatable = false, columnDefinition = "uuid")
+    private UUID campaignId;
+
+    /** The character this campaign version was copied from. Set by the database. */
+    @Column(name = "origin_character_id", insertable = false, updatable = false, columnDefinition = "uuid")
+    private UUID originCharacterId;
+
     @Convert(converter = CharacterStatusConverter.class)
     @Column(name = "status", nullable = false)
     private CharacterStatus status = CharacterStatus.DRAFT;
@@ -395,5 +403,13 @@ public class PlayerCharacter {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public UUID getCampaignId() {
+        return campaignId;
+    }
+
+    public UUID getOriginCharacterId() {
+        return originCharacterId;
     }
 }
