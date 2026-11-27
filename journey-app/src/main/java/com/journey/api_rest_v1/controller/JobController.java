@@ -20,6 +20,8 @@ import com.journey.api_rest_v1.dto.job.JobFilterRequest;
 import com.journey.api_rest_v1.dto.job.JobResponseDto;
 import com.journey.api_rest_v1.service.JobService;
 
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
+
 import jakarta.validation.Valid;
 
 /**
@@ -32,15 +34,19 @@ import jakarta.validation.Valid;
 public class JobController {
 
     private final JobService jobService;
+    private final ContentAccess contentAccess;
 
     /** Wires the job service. */
-    public JobController(JobService jobService) {
+    public JobController(JobService jobService, ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
         this.jobService = jobService;
     }
 
     /** Creates a job from existing traits and returns it with 201 Created. */
     @PostMapping()
     public ResponseEntity<JobResponseDto> createJob(@Valid @RequestBody CreateJobRequest request) {
+        contentAccess.requireWritableSource(request.content_source_id());
+        contentAccess.requireUsableTraits(request.content_source_id(), request.trait_ids());
         return new ResponseEntity<>(jobService.createJob(request), HttpStatus.CREATED);
     }
 
@@ -53,6 +59,7 @@ public class JobController {
     /** Returns a single job by id, with its traits in display order. */
     @GetMapping("/{id}")
     public ResponseEntity<JobResponseDto> getJob(@PathVariable String id) {
+        contentAccess.requireReadable(ContentAccess.Kind.JOB, id);
         return new ResponseEntity<>(jobService.getJobById(id), HttpStatus.OK);
     }
 
@@ -76,12 +83,16 @@ public class JobController {
     @PutMapping("/{id}")
     public ResponseEntity<JobResponseDto> updateJob(@PathVariable String id,
             @Valid @RequestBody CreateJobRequest request) {
+        contentAccess.requireWritable(ContentAccess.Kind.JOB, id);
+        contentAccess.requireWritableSource(request.content_source_id());
+        contentAccess.requireUsableTraits(request.content_source_id(), request.trait_ids());
         return new ResponseEntity<>(jobService.updateJob(id, request), HttpStatus.OK);
     }
 
     /** Deletes a job (its traits are kept) and returns a confirmation message. */
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteJob(@PathVariable String id) {
+        contentAccess.requireWritable(ContentAccess.Kind.JOB, id);
         return ResponseEntity.ok(jobService.deleteJob(id));
     }
 }

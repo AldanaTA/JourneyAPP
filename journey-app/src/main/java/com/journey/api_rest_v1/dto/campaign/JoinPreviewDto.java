@@ -8,6 +8,10 @@ public record JoinPreviewDto(
     String ownerName,
     int playerCount,
     boolean joinEnabled,
-    boolean alreadyMember
+    boolean alreadyMember,
+    /** What this code joins as: PLAYER or STORYTELLER. */
+    String joinsAs,
+    /** The caller's role now, if already a member. */
+    String currentRole
 ) {
 }

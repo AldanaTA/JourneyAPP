@@ -146,3 +146,14 @@
     min-height: 100vh;
   }
 }
+/*
+ * Phones (iOS Safari in particular) zoom in when a text box with text under 16px is focused, which jumps the whole
+ * screen on every search. Keep form text at 16px on touch screens; pinch-zoom still works.
+ */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

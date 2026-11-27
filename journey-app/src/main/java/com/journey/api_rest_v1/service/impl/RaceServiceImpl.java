@@ -43,6 +43,7 @@ import com.journey.api_rest_v1.repository.RaceRepository;
 import com.journey.api_rest_v1.repository.RaceTraitsRepository;
 import com.journey.api_rest_v1.repository.TraitRepository;
 import com.journey.api_rest_v1.service.RaceService;
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
 import com.journey.api_rest_v1.specification.SourceSpecifications;
 import com.journey.api_rest_v1.specification.RaceSpecifications;
 
@@ -56,6 +57,14 @@ import com.journey.api_rest_v1.specification.RaceSpecifications;
  */
 @Service
 public class RaceServiceImpl implements RaceService {
+
+    /** Who may read campaign content (set by Spring). */
+    private ContentAccess contentAccess;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setContentAccess(ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
+    }
 
     private static final String DEFAULT_SORT_FIELD = "raceName";
     private static final int DEFAULT_MOVEMENT = 30;
@@ -193,7 +202,8 @@ public class RaceServiceImpl implements RaceService {
     @Cacheable(cacheNames = "racesAll", key = "#page + ':' + #size + ':' + #sortBy + ':' + #sortDir")
     public Page<RaceResponseDto> getAllRaces(int page, int size, String sortBy, String sortDir) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortBy));
-        return raceRepository.findAll(pageable).map(raceMapper::CreateResponse);
+        // Official content only, so this cached list is the same for everyone (campaign content: use the filter).
+        return raceRepository.findAll(SourceSpecifications.<Race>notInSources(contentAccess.campaignSources()), pageable).map(raceMapper::CreateResponse);
     }
 
     /**
@@ -205,6 +215,7 @@ public class RaceServiceImpl implements RaceService {
     public Page<RaceResponseDto> filterRaces(RaceFilterRequest request) {
         Specification<Race> specification = RaceSpecifications.all()
                 .and(SourceSpecifications.<Race>inSources(request.sourceIds()))
+                .and(SourceSpecifications.<Race>notInSources(contentAccess.hiddenSources(ContentAccess.Kind.RACE)))
                 .and(RaceSpecifications.withSizes(request.sizes()))
                 .and(RaceSpecifications.withMovement(request.getMovementOperator(), request.movement()))
                 .and(RaceSpecifications.withTraitName(request.traitName()));

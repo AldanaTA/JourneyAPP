@@ -129,7 +129,7 @@ public class CampaignService {
     public List<CampaignSummaryDto> listMine() {
         return jdbc.query("""
                 SELECT o.campaign_id, o.name, o.description, o.player_count, o.character_count, o.join_enabled,
-                       o.updated_at, ow.display_name AS owner_name, r.role
+                       o.created_at, o.updated_at, ow.display_name AS owner_name, r.role
                 FROM campaign_overview o
                 JOIN content_sources s ON s.id = o.campaign_id
                 JOIN users ow ON ow.id = o.owner_user_id
@@ -140,7 +140,7 @@ public class CampaignService {
                 (rs, i) -> new CampaignSummaryDto(rs.getString("campaign_id"), rs.getString("name"),
                         rs.getString("description"), Role.fromDb(rs.getString("role")).name(), rs.getString("owner_name"),
                         rs.getInt("player_count"), rs.getInt("character_count"), rs.getBoolean("join_enabled"),
-                        String.valueOf(rs.getObject("updated_at"))));
+                        String.valueOf(rs.getObject("created_at")), String.valueOf(rs.getObject("updated_at"))));
     }
 
     @Transactional
@@ -178,13 +178,14 @@ public class CampaignService {
                 """, params(campaignId),
                 (rs, i) -> new CampaignDto.AllowedSourceDto(rs.getString("id"), rs.getString("source_name"), rs.getString("kind")));
         return jdbc.queryForObject("""
-                SELECT o.*, c.join_code, ow.display_name AS owner_name FROM campaign_overview o
+                SELECT o.*, c.join_code, c.storyteller_join_code, ow.display_name AS owner_name FROM campaign_overview o
                 JOIN campaigns c ON c.id = o.campaign_id JOIN users ow ON ow.id = o.owner_user_id
                 WHERE o.campaign_id = :campaign
                 """, params(campaignId),
                 (rs, i) -> new CampaignDto(rs.getString("campaign_id"), rs.getString("name"), rs.getString("description"),
                         role.name(), new NamedRefDto(rs.getString("owner_user_id"), rs.getString("owner_name")),
-                        rs.getBoolean("join_enabled"), role.isStoryteller() ? rs.getString("join_code") : null, allowed,
+                        rs.getBoolean("join_enabled"), role.isStoryteller() ? rs.getString("join_code") : null,
+                        role == Role.OWNER ? rs.getString("storyteller_join_code") : null, allowed,
                         rs.getInt("player_count"), rs.getInt("character_count"), String.valueOf(rs.getObject("created_at")),
                         String.valueOf(rs.getObject("updated_at"))));
     }
@@ -254,49 +255,68 @@ public class CampaignService {
     // Join link
     // ----------------------------
 
-    /** A new join code; links with the old one stop working. */
+    /**
+     * A new join code; links with the old one stop working. {@code storyteller}: the co-storyteller link (owner
+     * only); otherwise the players' link (any storyteller).
+     */
     @Transactional
-    public CampaignDto resetJoinCode(UUID campaignId) {
-        requireStoryteller(campaignId);
-        jdbc.update("""
-                UPDATE campaigns SET join_code = translate(encode(gen_random_bytes(12), 'base64'), '+/', '-_'),
-                       updated_at = NOW() WHERE id = :campaign
-                """, params(campaignId));
+    public CampaignDto resetJoinCode(UUID campaignId, boolean storyteller) {
+        if (storyteller) requireOwner(campaignId);
+        else requireStoryteller(campaignId);
+        jdbc.update("UPDATE campaigns SET %s = translate(encode(gen_random_bytes(12), 'base64'), '+/', '-_'), updated_at = NOW()"
+                .formatted(storyteller ? "storyteller_join_code" : "join_code") + " WHERE id = :campaign", params(campaignId));
         return get(campaignId);
     }
 
+    /** What a join link leads to. {@code joinsAs}: PLAYER for the players' link, STORYTELLER for the co-storyteller link. */
     @Transactional(readOnly = true)
     public JoinPreviewDto previewJoin(String code) {
         try {
             return jdbc.queryForObject("""
                     SELECT o.campaign_id, o.name, o.description, ow.display_name AS owner_name, o.player_count,
-                           o.join_enabled, (SELECT %s) IS NOT NULL AS member
+                           o.join_enabled, (SELECT %s) AS role, c.storyteller_join_code = :code AS as_storyteller
                     FROM campaigns c JOIN content_sources s ON s.id = c.id
                     JOIN campaign_overview o ON o.campaign_id = c.id JOIN users ow ON ow.id = o.owner_user_id
-                    WHERE c.join_code = :code
-                    """.formatted(ROLE_SQL), params(null).addValue("code", code),
-                    (rs, i) -> new JoinPreviewDto(rs.getString("campaign_id"), rs.getString("name"),
-                            rs.getString("description"), rs.getString("owner_name"), rs.getInt("player_count"),
-                            rs.getBoolean("join_enabled"), rs.getBoolean("member")));
+                    WHERE c.join_code = :code OR c.storyteller_join_code = :code
+                    """.formatted(ROLE_SQL), params(null).addValue("code", code == null ? "" : code.trim()),
+                    (rs, i) -> {
+                        boolean asStoryteller = rs.getBoolean("as_storyteller");
+                        String role = rs.getString("role");
+                        return new JoinPreviewDto(rs.getString("campaign_id"), rs.getString("name"),
+                                rs.getString("description"), rs.getString("owner_name"), rs.getInt("player_count"),
+                                asStoryteller || rs.getBoolean("join_enabled"), role != null,
+                                asStoryteller ? Role.STORYTELLER.name() : Role.PLAYER.name(),
+                                role == null ? null : Role.fromDb(role).name());
+                    });
         } catch (EmptyResultDataAccessException ex) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This join link is not valid (it may have been reset)");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This code is not valid (it may have been reset)");
         }
     }
 
-    /** Joins as a player. Joining again when already a member just returns the campaign. */
+    /**
+     * Joins with a code: as a player, or as a co-storyteller with the co-storyteller code (which also promotes a
+     * player who is already a member). Joining again just returns the campaign.
+     */
     @Transactional
     public CampaignDto join(String code) {
         JoinPreviewDto preview = previewJoin(code);
         UUID campaignId = UUID.fromString(preview.campaignId());
+        boolean asStoryteller = Role.STORYTELLER.name().equals(preview.joinsAs());
         if (!preview.alreadyMember()) {
             if (!preview.joinEnabled()) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This campaign is not taking new players right now");
             }
             jdbc.update("""
-                    INSERT INTO source_members (source_id, user_id, role) VALUES (:campaign, :user, 'viewer')
+                    INSERT INTO source_members (source_id, user_id, role)
+                    VALUES (:campaign, :user, CAST(:role AS source_role))
                     ON CONFLICT (source_id, user_id) DO NOTHING
-                    """, params(campaignId));
-            postSystem(campaignId, displayName(currentUser.requireId()) + " joined the campaign");
+                    """, params(campaignId).addValue("role", asStoryteller ? "editor" : "viewer"));
+            postSystem(campaignId, displayName(currentUser.requireId()) + " joined the campaign"
+                    + (asStoryteller ? " as a co-storyteller" : ""));
+        } else if (asStoryteller && Role.PLAYER.name().equals(preview.currentRole())) {
+            jdbc.update("UPDATE source_members SET role = 'editor', updated_at = NOW() WHERE source_id = :campaign AND user_id = :user",
+                    params(campaignId));
+            postSystem(campaignId, displayName(currentUser.requireId()) + " is now a co-storyteller");
         }
         return get(campaignId);
     }

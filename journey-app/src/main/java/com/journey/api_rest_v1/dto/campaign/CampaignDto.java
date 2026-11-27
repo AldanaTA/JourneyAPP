@@ -18,6 +18,8 @@ public record CampaignDto(
     NamedRefDto owner,
     boolean joinEnabled,
     String joinCode,
+    /** The co-storyteller link's code; only sent to the owner. */
+    String storytellerJoinCode,
     List<AllowedSourceDto> allowedSources,
     int playerCount,
     int characterCount,

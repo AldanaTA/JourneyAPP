@@ -43,6 +43,7 @@ public class SecurityConfig {
      */
     private static final String[] CAMPAIGN_CONTENT = {
         "/api/v1/traits/**", "/api/v1/powers/**", "/api/v1/items/**", "/api/v1/creatures/**",
+        "/api/v1/races/**", "/api/v1/jobs/**",
     };
 
     @Bean

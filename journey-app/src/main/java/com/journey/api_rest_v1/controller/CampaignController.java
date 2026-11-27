@@ -77,10 +77,11 @@ public class CampaignController {
         return ResponseEntity.noContent().build();
     }
 
-    /** A new join code; old links stop working (storytellers). */
+    /** A new join code; old links stop working. {@code ?role=STORYTELLER} resets the co-storyteller code (owner). */
     @PostMapping("/{id}/join-code")
-    public ResponseEntity<CampaignDto> resetJoinCode(@PathVariable String id) {
-        return ResponseEntity.ok(campaigns.resetJoinCode(uuid(id)));
+    public ResponseEntity<CampaignDto> resetJoinCode(@PathVariable String id,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "PLAYER") String role) {
+        return ResponseEntity.ok(campaigns.resetJoinCode(uuid(id), "STORYTELLER".equalsIgnoreCase(role)));
     }
 
     /** What a join link leads to, before joining. */

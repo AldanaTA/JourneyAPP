@@ -134,7 +134,8 @@ public class CharacterServiceImpl implements CharacterService {
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = "characterReferenceData", key = "'all'")
     public CharacterReferenceDataDto getReferenceData() {
-        List<CharacterSheetDto> sheets = sheetRepository.findAllByOrderBySortOrderAsc().stream()
+        // Official sheets only: this is cached for everyone (a campaign's sheets: GET /campaigns/{id}/sheets).
+        List<CharacterSheetDto> sheets = sheetRepository.findOfficial().stream()
                 .map(s -> new CharacterSheetDto(s.getId().toString(), s.getName(), s.getDescription(), s.getBaseBody(),
                         s.getBaseStrength(), s.getBaseSpeed(), s.getBaseMagic()))
                 .toList();

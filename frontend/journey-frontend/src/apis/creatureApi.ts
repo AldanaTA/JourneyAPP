@@ -53,8 +53,9 @@ export function filterCreatures(filters: CreatureFilterRequest, page = 0, size =
 }
 
 /** Fetches every creature type (all sources), for filter options. */
-export async function getCreatureTypes(): Promise<CreatureTypeInfo[]> {
-  const response = await authorizedFetch(`/creatures/types`);
+/** Creature types: the official ones, or those of one content source (e.g. a campaign's own copies). */
+export async function getCreatureTypes(contentSourceId?: string): Promise<CreatureTypeInfo[]> {
+  const response = await authorizedFetch(`/creatures/types${contentSourceId ? `?contentSourceId=${encodeURIComponent(contentSourceId)}` : ""}`);
   if (!response.ok) {
     throw new Error(`Creature API request failed: ${response.status} ${response.statusText}`);
   }

@@ -46,6 +46,7 @@ import com.journey.api_rest_v1.repository.JobCategoryRepository;
 import com.journey.api_rest_v1.repository.JobRepository;
 import com.journey.api_rest_v1.repository.TraitRepository;
 import com.journey.api_rest_v1.service.JobService;
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
 import com.journey.api_rest_v1.specification.SourceSpecifications;
 import com.journey.api_rest_v1.specification.JobSpecifications;
 
@@ -55,6 +56,14 @@ import com.journey.api_rest_v1.specification.JobSpecifications;
  */
 @Service
 public class JobServiceImpl implements JobService {
+
+    /** Who may read campaign content (set by Spring). */
+    private ContentAccess contentAccess;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setContentAccess(ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
+    }
 
     private static final String DEFAULT_SORT_FIELD = "jobName";
 
@@ -171,7 +180,8 @@ public class JobServiceImpl implements JobService {
     @Cacheable(cacheNames = "jobsAll", key = "#page + ':' + #size + ':' + #sortBy + ':' + #sortDir")
     public Page<JobResponseDto> getAllJobs(int page, int size, String sortBy, String sortDir) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortDir), sortBy));
-        return jobRepository.findAll(pageable).map(jobMapper::CreateResponse);
+        // Official content only, so this cached list is the same for everyone (campaign content: use the filter).
+        return jobRepository.findAll(SourceSpecifications.<Job>notInSources(contentAccess.campaignSources()), pageable).map(jobMapper::CreateResponse);
     }
 
     /** Returns every job category, sorted by name, served from the cache when possible. */
@@ -198,6 +208,7 @@ public class JobServiceImpl implements JobService {
 
         Specification<Job> specification = JobSpecifications.all()
                 .and(SourceSpecifications.<Job>inSources(request.sourceIds()))
+                .and(SourceSpecifications.<Job>notInSources(contentAccess.hiddenSources(ContentAccess.Kind.JOB)))
                 .and(JobSpecifications.withCategories(
                         request.categories(), request.getMatchAll(), request.getPrimaryOnly()))
                 .and(JobSpecifications.withTraitName(request.traitName()));

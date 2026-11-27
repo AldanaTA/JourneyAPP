@@ -18,7 +18,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- SET CONSTRAINTS ALL DEFERRED, see the character versions below).
 --
 -- This file adds what only campaigns have:
---   campaigns                       the join link, one row per campaign source
+--   campaigns                       the join links (players, co-storytellers), one row per campaign source
 --   campaign_allowed_sources        books the campaign allows (core is always allowed and is not listed)
 --   campaign_note_folders / notes   the storytellers' notes, in folders, written in the rules' markdown format
 --   characters.campaign_id          campaign versions of characters
@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS campaigns (
     -- open. A new code (the API's "reset link") makes old links stop working.
     join_code TEXT NOT NULL DEFAULT translate(encode(gen_random_bytes(12), 'base64'), '+/', '-_'),
     join_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    -- A second link, <app>/join/<storyteller_join_code>, joins as a co-storyteller. Only the owner sees it, and it
+    -- works even while joining is closed for players.
+    storyteller_join_code TEXT NOT NULL DEFAULT translate(encode(gen_random_bytes(12), 'base64'), '+/', '-_'),
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -54,6 +57,16 @@ CREATE TABLE IF NOT EXISTS campaigns (
         REFERENCES content_sources (id, kind) ON DELETE CASCADE,
     CONSTRAINT uq_campaigns_join_code UNIQUE (join_code)
 );
+
+-- For databases created before the co-storyteller link existed.
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS storyteller_join_code TEXT NOT NULL
+    DEFAULT translate(encode(gen_random_bytes(12), 'base64'), '+/', '-_');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_campaigns_storyteller_join_code') THEN
+        ALTER TABLE campaigns ADD CONSTRAINT uq_campaigns_storyteller_join_code UNIQUE (storyteller_join_code);
+    END IF;
+END $$;
 
 -- ----------------------------
 -- Allowed sources

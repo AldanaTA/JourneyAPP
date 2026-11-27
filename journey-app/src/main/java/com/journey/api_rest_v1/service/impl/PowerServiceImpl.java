@@ -112,22 +112,11 @@ public class PowerServiceImpl implements PowerService {
 
         Power savedPower = powerRepository.save(power);
 
-        List<PowerCategories> powerCategories = distinctCategories(request.categories()).stream()
-                        .map(category -> {
-                            PowerCategories link = new PowerCategories(
-                                    new PowerCategoriesId(savedPower.getId(), category),
-                                    savedPower,
-                                    category,
-                                    now,
-                                    now
-                            );
-                            savedPower.getCategories().add(link);
-                            return link;
-                        })
-                        .toList();
-
-        if (!powerCategories.isEmpty()) {
-            powerCategoriesRepository.saveAll(powerCategories);
+        // The saved power is managed, so new links are persisted by cascade when the transaction flushes (saving
+        // them again as well would put a second copy of each link in the persistence context).
+        for (PowerCategory category : distinctCategories(request.categories())) {
+            savedPower.getCategories().add(new PowerCategories(
+                    new PowerCategoriesId(savedPower.getId(), category), savedPower, category, now, now));
         }
 
         return powerMapper.CreateResponse(savedPower);

@@ -17,6 +17,8 @@ import com.journey.api_rest_v1.dto.race.RaceFilterRequest;
 import com.journey.api_rest_v1.dto.race.RaceResponseDto;
 import com.journey.api_rest_v1.service.RaceService;
 
+import com.journey.api_rest_v1.service.campaign.ContentAccess;
+
 import jakarta.validation.Valid;
 
 /**
@@ -28,21 +30,26 @@ import jakarta.validation.Valid;
 public class RaceController {
 
     private final RaceService raceService;
+    private final ContentAccess contentAccess;
 
     /** Wires the race service. */
-    public RaceController(RaceService raceService) {
+    public RaceController(RaceService raceService, ContentAccess contentAccess) {
+        this.contentAccess = contentAccess;
         this.raceService = raceService;
     }
 
     /** Creates a race from existing traits and returns it with 201 Created. */
     @PostMapping()
     public ResponseEntity<RaceResponseDto> createRace(@Valid @RequestBody CreateRaceRequest request) {
+        contentAccess.requireWritableSource(request.content_source_id());
+        contentAccess.requireUsableTraits(request.content_source_id(), request.trait_ids());
         return new ResponseEntity<>(raceService.createRace(request), HttpStatus.CREATED);
     }
 
     /** Returns a single race by id, with its traits in display order. */
     @GetMapping("/{id}")
     public ResponseEntity<RaceResponseDto> getRace(@PathVariable String id) {
+        contentAccess.requireReadable(ContentAccess.Kind.RACE, id);
         return new ResponseEntity<>(raceService.getRaceById(id), HttpStatus.OK);
     }
 
@@ -66,12 +73,16 @@ public class RaceController {
     @PutMapping("/{id}")
     public ResponseEntity<RaceResponseDto> updateRace(@PathVariable String id,
             @Valid @RequestBody CreateRaceRequest request) {
+        contentAccess.requireWritable(ContentAccess.Kind.RACE, id);
+        contentAccess.requireWritableSource(request.content_source_id());
+        contentAccess.requireUsableTraits(request.content_source_id(), request.trait_ids());
         return new ResponseEntity<>(raceService.updateRace(id, request), HttpStatus.OK);
     }
 
     /** Deletes a race (its traits are kept) and returns a confirmation message. */
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteRace(@PathVariable String id) {
+        contentAccess.requireWritable(ContentAccess.Kind.RACE, id);
         return ResponseEntity.ok(raceService.deleteRace(id));
     }
 }

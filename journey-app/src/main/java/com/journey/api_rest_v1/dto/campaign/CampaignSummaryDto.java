@@ -10,6 +10,7 @@ public record CampaignSummaryDto(
     int playerCount,
     int characterCount,
     boolean joinEnabled,
+    String createdAt,
     String updatedAt
 ) {
 }

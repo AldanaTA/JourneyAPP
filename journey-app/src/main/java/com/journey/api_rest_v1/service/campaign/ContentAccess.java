@@ -28,7 +28,8 @@ public class ContentAccess {
 
     /** The content tables this guards, by kind. */
     public enum Kind {
-        TRAIT("traits"), POWER("powers"), ITEM("items"), CREATURE("creatures"), BOOK("books"), CHAPTER("rule_chapters");
+        TRAIT("traits"), POWER("powers"), ITEM("items"), CREATURE("creatures"), RACE("races"), JOB("jobs"),
+        BOOK("books"), CHAPTER("rule_chapters"), SHEET("character_sheets");
 
         private final String table;
 
@@ -114,6 +115,24 @@ public class ContentAccess {
         UUID source = sourceOf(kind, id);
         if (source == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found");
         requireWritableSource(source.toString());
+    }
+
+    /**
+     * For races and jobs a storyteller makes: every trait must be official or the campaign's own (so another
+     * campaign's traits are never shown to these players).
+     */
+    public void requireUsableTraits(String sourceId, java.util.List<String> traitIds) {
+        if (currentUser.isAdmin() || traitIds == null || traitIds.isEmpty()) return;
+        java.util.Set<UUID> ids = new java.util.HashSet<>();
+        for (String id : traitIds) ids.add(CharacterAccess.parseUuid(id, "trait"));
+        Integer usable = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM traits t JOIN content_sources s ON s.id = t.source_id
+                WHERE t.id IN (:ids) AND (CAST(s.kind AS TEXT) <> 'campaign' OR s.id = :source)
+                """, new MapSqlParameterSource("ids", ids).addValue("source", CharacterAccess.parseUuid(sourceId, "content source")),
+                Integer.class);
+        if (usable == null || usable != ids.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use official traits or this campaign's own traits");
+        }
     }
 
     /** The source of an entry, or null when it does not exist (the endpoint then answers 404 as before). */

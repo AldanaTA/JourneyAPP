@@ -10,6 +10,7 @@ import { draftFromServer, newDraft } from "./draft";
 import { useDraftStore, useIsDirty } from "./draftStore";
 import { useBudget } from "./hooks";
 import { useReferenceStore } from "./referenceStore";
+import { useReturnTo } from "./returnTo";
 import SourcesPage from "./SourcesPage";
 import { Modal, PrimaryButton, SecondaryButton } from "./ui";
 
@@ -45,6 +46,7 @@ const AUTOSAVE_MS = 30_000;
 export default function CharacterEditor({ mode }: { mode: "edit" | "view" }) {
   const { characterId = "new" } = useParams();
   const navigate = useNavigate();
+  const back = useReturnTo();
   const isNew = characterId === "new";
   const readOnly = mode === "view";
 
@@ -105,8 +107,8 @@ export default function CharacterEditor({ mode }: { mode: "edit" | "view" }) {
 
   // Once the first save has created the character, move to its own address (the editor stays open).
   useEffect(() => {
-    if (isNew && draftId) navigate(`/characters/${draftId}/edit`, { replace: true });
-  }, [isNew, draftId, navigate]);
+    if (isNew && draftId) navigate(`/characters/${draftId}/edit${back.suffix}`, { replace: true });
+  }, [isNew, draftId, navigate, back.suffix]);
 
   // Close the character when leaving the editor.
   useEffect(() => () => close(), [close]);
@@ -116,7 +118,7 @@ export default function CharacterEditor({ mode }: { mode: "edit" | "view" }) {
       <EditorFrame>
         <div className="m-auto max-w-sm space-y-3 p-6 text-center">
           <p className="text-sm text-red-700">{loadError ?? referenceError}</p>
-          <SecondaryButton onClick={() => navigate("/characters")}>Back to characters</SecondaryButton>
+          <SecondaryButton onClick={() => navigate(back.to)}>Back</SecondaryButton>
         </div>
       </EditorFrame>
     );
@@ -135,7 +137,7 @@ export default function CharacterEditor({ mode }: { mode: "edit" | "view" }) {
       <EditorFrame>
         <SourcesPage
           initial={[]}
-          onCancel={() => navigate("/characters")}
+          onCancel={() => navigate(back.to)}
           onContinue={(sourceIds) => open(newDraft(sourceIds), false, false)}
         />
       </EditorFrame>
@@ -214,6 +216,7 @@ function EditorFrame({ children }: { children: React.ReactNode }) {
 /** X, the EXP left, and Save; saves on its own every 30 seconds while there are unsaved changes. */
 function EditorHeader({ readOnly, showJobPoints }: { readOnly: boolean; showJobPoints: boolean }) {
   const navigate = useNavigate();
+  const back = useReturnTo();
   const name = useDraftStore((state) => state.draft?.name);
   const id = useDraftStore((state) => state.draft?.id);
   const saving = useDraftStore((state) => state.saving);
@@ -243,7 +246,8 @@ function EditorHeader({ readOnly, showJobPoints }: { readOnly: boolean; showJobP
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, readOnly]);
 
-  const leave = () => navigate("/characters");
+  // Back where the editor was opened from (a campaign's play view, the character list, ...).
+  const leave = () => navigate(back.to);
   const status = saving ? "Saving…" : saveError ? "Not saved" : dirty ? "Unsaved" : "Saved";
 
   return (
@@ -283,7 +287,7 @@ function EditorHeader({ readOnly, showJobPoints }: { readOnly: boolean; showJobP
           id && (
             <button
               type="button"
-              onClick={() => navigate(`/characters/${id}/edit`)}
+              onClick={() => navigate(`/characters/${id}/edit${back.suffix}`)}
               className="flex h-9 items-center gap-1.5 rounded-xl bg-white/10 px-3 text-sm font-semibold hover:bg-white/20"
             >
               <Pencil size={15} /> Edit
