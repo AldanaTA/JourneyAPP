@@ -351,6 +351,7 @@ public class CharacterSaveService {
             row.setLvl(entry.lvl());
             row.setExpSpent(entry.exp_spent());
             row.setNotes(entry.notes() == null ? "" : entry.notes());
+            row.setUsesSpent(entry.uses_spent() == null ? 0 : entry.uses_spent());
             Map<String, Object> edits = checkedEdits(entry.edits(), TRAIT_FIELDS, t.getTraitName());
             set(text(edits, "trait_name"), t.getTraitName(), row::setTraitName);
             set(count(edits, "purchase_cost"), t.getPurchaseCost(), row::setPurchaseCost);

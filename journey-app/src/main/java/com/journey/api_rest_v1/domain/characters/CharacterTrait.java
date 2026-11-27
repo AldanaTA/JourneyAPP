@@ -47,6 +47,10 @@ public class CharacterTrait {
     @Column(name = "notes", nullable = false, columnDefinition = "TEXT")
     private String notes = "";
 
+    /** Uses spent since the last rest (see 13-character_play.sql). */
+    @Column(name = "uses_spent", nullable = false)
+    private Integer usesSpent = 0;
+
     /** Character's version of the compendium fields below: null means "use the compendium value". */
     @Column(name = "trait_name", columnDefinition = "TEXT")
     private String traitName;
@@ -148,6 +152,14 @@ public class CharacterTrait {
 
     public String getNotes() {
         return notes;
+    }
+
+    public Integer getUsesSpent() {
+        return usesSpent;
+    }
+
+    public void setUsesSpent(Integer usesSpent) {
+        this.usesSpent = usesSpent;
     }
 
     public void setNotes(String notes) {

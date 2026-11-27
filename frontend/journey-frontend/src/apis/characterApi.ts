@@ -7,6 +7,7 @@ import type {
   ContentSource,
   SavedCharacter,
 } from "../models/Character";
+import type { Item } from "../models/Item";
 import type { Job } from "../models/Job";
 import type { Power } from "../models/Power";
 import type { Race } from "../models/Race";
@@ -139,6 +140,7 @@ export interface SaveCharacterBody {
     exp_spent: number;
     notes: string;
     edits: Record<string, unknown>;
+    uses_spent: number;
   }[];
   powers: { power_id: string; lvl: number; exp_spent: number; notes: string; edits: Record<string, unknown> }[];
   inventory: {
@@ -169,4 +171,8 @@ export interface SaveCharacterBody {
 /** Finishes character creation: the draft becomes active if it meets every creation rule. */
 export function finalizeCharacter(id: string): Promise<CharacterDto> {
   return request(`/characters/${encodeURIComponent(id)}/finalize`, { method: "POST" });
+}
+
+export function getItem(id: string): Promise<Item> {
+  return request(`/items/${encodeURIComponent(id)}`);
 }

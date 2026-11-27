@@ -52,13 +52,13 @@ export default function PlayerHome() {
             </span>
           </button>
         </div>
-        <Panel title="Your characters in this campaign">
+        <Panel title="Your characters in this campaign · tap one to play">
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           {mine?.length === 0 && <p className="text-sm text-slate-500">None yet.</p>}
           <ul className="space-y-1.5">
             {mine?.map((c) => (
               <li key={c.id}>
-                <button type="button" onClick={() => navigate(`/characters/${c.id}/edit${returnParam(`/campaigns/${campaign.id}`)}`)} className="flex w-full items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-left hover:border-violet-300">
+                <button type="button" onClick={() => navigate(`/campaigns/${campaign.id}/characters/${c.id}${returnParam(`/campaigns/${campaign.id}`)}`)} className="flex w-full items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-left hover:border-violet-300">
                   <span className="min-w-0 flex-1">
                     <span className="block font-medium text-slate-900">{c.name}</span>
                     <span className="block text-xs text-slate-500">

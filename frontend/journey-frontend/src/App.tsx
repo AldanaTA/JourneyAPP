@@ -32,6 +32,7 @@ const CharacterEditor = lazy(() => import("./sections/characters/editor/Characte
 const CampaignsSection = lazy(() => import("./sections/campaigns/CampaignsSection"))
 const CampaignPage = lazy(() => import("./sections/campaigns/CampaignPage"))
 const JoinPage = lazy(() => import("./sections/campaigns/JoinPage"))
+const CampaignCharacterPlay = lazy(() => import("./sections/campaigns/CampaignCharacterPlay"))
 const RuleBookReader = lazy(() => import("./sections/game-library/rules/RuleBookReader"))
 const SignInPage = lazy(() => import("./sections/auth/SignInPage"))
 const ForgotPasswordPage = lazy(() => import("./sections/auth/ForgotPasswordPage"))
@@ -87,6 +88,8 @@ const appRoutes = (
     <Route path="/characters/:characterId" element={<CharacterEditor mode="view" />} />
     <Route path="/campaigns" element={<CampaignsSection />} />
     <Route path="/campaigns/:campaignId" element={<CampaignPage />} />
+    {/* A player playing one of their campaign characters. */}
+    <Route path="/campaigns/:campaignId/characters/:characterId" element={<CampaignCharacterPlay />} />
     {/* A shared join link (signed-out visitors sign in first and come back here). */}
     <Route path="/join/:code" element={<JoinPage />} />
     <Route path="*" element={<Navigate to="/library" replace />} />

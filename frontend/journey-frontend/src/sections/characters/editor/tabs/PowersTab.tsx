@@ -6,8 +6,9 @@ import { applyEdits } from "../applyEdits";
 import type { DraftPower, PowerFields } from "../draft";
 import { draftPower, powerFields } from "../draft";
 import { useDraftStore } from "../draftStore";
-import { useBudget, useDraft, useReadOnly, useUpdate } from "../hooks";
-import { POWER_COST, effectivePower, powerLevelCost } from "../rules";
+import { useBudget, useDraft, useReadOnly, useStats, useUpdate } from "../hooks";
+import { usePlay } from "../playContext";
+import { POWER_COST, effectivePower, powerLevelCost, spendCapacities } from "../rules";
 import { ConfirmDialog, EmptyNote, Fab, Panel } from "../ui";
 
 const PowerPicker = lazy(() => import("../pickers/PowerPicker"));
@@ -65,6 +66,23 @@ export default function PowersTab() {
   const update = useUpdate();
   const b = useBudget();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const play = usePlay();
+  const s = useStats();
+
+  /** In play: pay the power's MP / HP / EP from the character's current capacities and tell the table. */
+  const cast = (p: DraftPower) => {
+    const f = effectivePower(p);
+    const costs = { MP: f.mpCost, HP: f.hpCost, EP: f.epCost };
+    const short = spendCapacities(structuredClone(d), s, costs);
+    if (short) {
+      play?.notify(short, "warn");
+      return;
+    }
+    update((x) => void spendCapacities(x, s, costs));
+    const paid = [f.mpCost ? `${f.mpCost} MP` : null, f.hpCost ? `${f.hpCost} HP` : null, f.epCost ? `${f.epCost} EP` : null, f.tpCost ? `${f.tpCost} TP` : null].filter(Boolean).join(", ");
+    play?.announce(`casts ${f.name}${paid ? ` (${paid})` : ""}`);
+    play?.notify(`Cast ${f.name}${paid ? `: ${paid}` : ""}`);
+  };
 
   const find = (id: string) => d.powers.find((p) => p.powerId === id);
   const change = (id: string, recipe: (p: DraftPower) => void) =>
@@ -129,6 +147,14 @@ export default function PowersTab() {
                     onEdit={() => openEdit(p)}
                     onLevelUp={() => setDialog({ kind: "level", powerId: p.powerId, direction: "up" })}
                     onLevelDown={() => setDialog({ kind: "level", powerId: p.powerId, direction: "down" })}
+                    actions={
+                      play && (
+                        <button type="button" onClick={() => cast(p)} title="Cast: spends the cost from your capacities"
+                          className="rounded-lg bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm hover:bg-violet-700">
+                          Cast
+                        </button>
+                      )
+                    }
                     levelUpDisabled={cost > b.expRemaining ? `Needs ${cost} EXP` : null}
                     levelDownDisabled={p.lvl <= 1 ? "Already LVL 1" : null}
                   >
@@ -154,7 +180,7 @@ export default function PowersTab() {
           </Panel>
         ))}
 
-      {!readOnly && <Fab label="Learn a power" side="left" onClick={() => setDialog({ kind: "learn" })} className="bottom-24" />}
+      {!readOnly && <Fab label="Learn a power" onClick={() => setDialog({ kind: "learn" })} className="bottom-24" />}
 
       {dialog?.kind === "level" && current && (() => {
         const up = dialog.direction === "up";

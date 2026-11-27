@@ -105,6 +105,8 @@ export interface CharacterTraitDto {
   expSpent: number;
   jobPointsSpent: number;
   notes: string;
+  /** Uses spent since the last rest. */
+  usesSpent: number;
   traitName: string;
   purchaseCost: number | null;
   lvlUpCost: number | null;

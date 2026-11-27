@@ -10,6 +10,8 @@ import { draftFromServer, newDraft } from "./draft";
 import { useDraftStore, useIsDirty } from "./draftStore";
 import { useBudget } from "./hooks";
 import { useReferenceStore } from "./referenceStore";
+import type { PlayActions } from "./playContext";
+import { PlayContext } from "./playContext";
 import { useReturnTo } from "./returnTo";
 import SourcesPage from "./SourcesPage";
 import { Modal, PrimaryButton, SecondaryButton } from "./ui";
@@ -43,7 +45,17 @@ const AUTOSAVE_MS = 30_000;
  * /characters/:id/edit, and /characters/:id (view, read-only). Changes stay in the browser until Save or the
  * periodic autosave, which send the whole character in one request.
  */
-export default function CharacterEditor({ mode }: { mode: "edit" | "view" }) {
+export default function CharacterEditor({
+  mode,
+  play = null,
+  drawer,
+}: {
+  mode: "edit" | "view";
+  /** Set when the character is played in a campaign: tap to roll and spend, quick saves. */
+  play?: PlayActions | null;
+  /** Shown over the sheet in play (the side panel with chat and search). */
+  drawer?: React.ReactNode;
+}) {
   const { characterId = "new" } = useParams();
   const navigate = useNavigate();
   const back = useReturnTo();
@@ -155,8 +167,9 @@ export default function CharacterEditor({ mode }: { mode: "edit" | "view" }) {
   }[tab];
 
   return (
+    <PlayContext.Provider value={play}>
     <EditorFrame>
-      <EditorHeader readOnly={readOnly} showJobPoints={tab === "job"} />
+      <EditorHeader readOnly={readOnly} showJobPoints={tab === "job"} quickSave={play !== null} />
       <main className="flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-4">
         <div className="mx-auto max-w-3xl">
           <Suspense
@@ -192,7 +205,9 @@ export default function CharacterEditor({ mode }: { mode: "edit" | "view" }) {
           ))}
         </div>
       </nav>
+      {drawer}
     </EditorFrame>
+    </PlayContext.Provider>
   );
 }
 
@@ -214,7 +229,10 @@ function EditorFrame({ children }: { children: React.ReactNode }) {
 }
 
 /** X, the EXP left, and Save; saves on its own every 30 seconds while there are unsaved changes. */
-function EditorHeader({ readOnly, showJobPoints }: { readOnly: boolean; showJobPoints: boolean }) {
+/** In play, changes (HP, resources, uses) are saved this soon after the last one. */
+const QUICK_SAVE_MS = 2_500;
+
+function EditorHeader({ readOnly, showJobPoints, quickSave }: { readOnly: boolean; showJobPoints: boolean; quickSave: boolean }) {
   const navigate = useNavigate();
   const back = useReturnTo();
   const name = useDraftStore((state) => state.draft?.name);
@@ -237,6 +255,17 @@ function EditorHeader({ readOnly, showJobPoints }: { readOnly: boolean; showJobP
     }, AUTOSAVE_MS);
     return () => window.clearInterval(timer);
   }, [readOnly]);
+
+  // In play: save a moment after each change, so the table sees HP and resources as they are.
+  const version = useDraftStore((state) => state.version);
+  useEffect(() => {
+    if (readOnly || !quickSave) return;
+    const timer = window.setTimeout(() => {
+      const state = useDraftStore.getState();
+      if (state.version !== state.savedVersion && !state.saving && state.failedVersion !== state.version) void state.save();
+    }, QUICK_SAVE_MS);
+    return () => window.clearTimeout(timer);
+  }, [version, readOnly, quickSave]);
 
   // Warn before the tab is closed with unsaved changes.
   useEffect(() => {

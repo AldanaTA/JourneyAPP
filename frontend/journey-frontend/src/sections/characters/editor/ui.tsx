@@ -154,7 +154,7 @@ export function Chip({ label, value, tone = "slate" }: { label: string; value: R
 
 /**
  * One row of values: "Body  44  [5 EXP] [+1 Bonus]  ±". {@code chips} are shown under the name on phones and
- * beside it on wider screens.
+ * beside it on wider screens. {@code onTap} makes the name and value a button (e.g. roll the skill in play).
  */
 export function ValueRow({
   name,
@@ -162,15 +162,19 @@ export function ValueRow({
   chips,
   onAdjust,
   readOnly,
+  onTap,
+  tapLabel,
 }: {
   name: ReactNode;
   value: ReactNode;
   chips?: ReactNode;
   onAdjust?: () => void;
   readOnly?: boolean;
+  onTap?: () => void;
+  tapLabel?: string;
 }) {
-  return (
-    <div className="flex items-center gap-3 border-b border-slate-100 py-2 last:border-b-0">
+  const body = (
+    <>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="text-sm font-medium text-slate-800">{name}</span>
@@ -178,6 +182,23 @@ export function ValueRow({
         </div>
       </div>
       <span className="min-w-[3ch] text-right text-lg font-semibold tabular-nums text-slate-900">{value}</span>
+    </>
+  );
+  return (
+    <div className="flex items-center gap-3 border-b border-slate-100 py-2 last:border-b-0">
+      {onTap ? (
+        <button
+          type="button"
+          onClick={onTap}
+          aria-label={tapLabel}
+          title={tapLabel}
+          className="-mx-1.5 flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-0.5 text-left transition hover:bg-violet-50 active:bg-violet-100"
+        >
+          {body}
+        </button>
+      ) : (
+        body
+      )}
       {onAdjust && !readOnly ? <AdjustButton onClick={onAdjust} label={`Adjust ${typeof name === "string" ? name : ""}`} /> : <span className="w-8" />}
     </div>
   );

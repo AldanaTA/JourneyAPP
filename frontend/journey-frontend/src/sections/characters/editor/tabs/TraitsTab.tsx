@@ -7,8 +7,9 @@ import { applyEdits } from "../applyEdits";
 import type { DraftTrait, TraitFields } from "../draft";
 import { draftTrait, traitFields } from "../draft";
 import { useDraftStore } from "../draftStore";
-import { useBudget, useDraft, useReadOnly, useUpdate } from "../hooks";
-import { MAX_TRAIT_LEVEL, effectiveTrait, traitLevelCost } from "../rules";
+import { useBudget, useDraft, useReadOnly, useStats, useUpdate } from "../hooks";
+import { usePlay } from "../playContext";
+import { MAX_TRAIT_LEVEL, effectiveTrait, spendCapacities, traitLevelCost } from "../rules";
 import { ConfirmDialog, EmptyNote, Fab } from "../ui";
 
 const TraitPicker = lazy(() => import("../pickers/TraitPicker"));
@@ -50,6 +51,38 @@ export default function TraitsTab() {
   const update = useUpdate();
   const b = useBudget();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const play = usePlay();
+  const s = useStats();
+
+  /** In play: pay the trait's MP / EP and tell the table. */
+  const spend = (t: DraftTrait) => {
+    const f = effectiveTrait(t);
+    const costs = { MP: f.mpCost, EP: f.epCost };
+    const short = spendCapacities(structuredClone(d), s, costs);
+    if (short) {
+      play?.notify(short, "warn");
+      return;
+    }
+    update((x) => void spendCapacities(x, s, costs));
+    const paid = [f.mpCost ? `${f.mpCost} MP` : null, f.epCost ? `${f.epCost} EP` : null, f.tpCost ? `${f.tpCost} TP` : null].filter(Boolean).join(", ");
+    play?.announce(`uses ${f.traitName}${paid ? ` (${paid})` : ""}`);
+    play?.notify(`${f.traitName}${paid ? `: ${paid}` : ""}`);
+  };
+
+  /** In play: mark one use of the trait. */
+  const use = (t: DraftTrait) => {
+    const f = effectiveTrait(t);
+    const total = f.traitUses ?? 0;
+    if (t.usesSpent >= total) {
+      play?.notify(`No uses of ${f.traitName} left until you rest`, "warn");
+      return;
+    }
+    change(t.traitId, (row) => void (row.usesSpent += 1));
+    const left = total - t.usesSpent - 1;
+    play?.announce(`uses ${f.traitName} (${left} use${left === 1 ? "" : "s"} left)`);
+    play?.notify(`${f.traitName}: ${left} of ${total} uses left`);
+  };
+  const anyUsed = d.traits.some((t) => t.usesSpent > 0);
 
   const traits = [...d.traits].sort((x, y) => effectiveTrait(x).traitName.localeCompare(effectiveTrait(y).traitName));
   const find = (id: string) => d.traits.find((t) => t.traitId === id);
@@ -80,6 +113,18 @@ export default function TraitsTab() {
 
   return (
     <div className="space-y-3">
+      {play && anyUsed && (
+        <div className="flex items-center justify-between rounded-xl bg-violet-50 px-3 py-2 text-sm">
+          <span className="text-violet-900">Uses come back when you rest.</span>
+          <button type="button" onClick={() => {
+            update((x) => x.traits.forEach((t) => void (t.usesSpent = 0)));
+            play.announce("rests: trait uses are back");
+            play.notify("Trait uses reset");
+          }} className="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-violet-700 shadow-sm">
+            Rest
+          </button>
+        </div>
+      )}
       {traits.length === 0 ? (
         <EmptyNote>No traits yet. {readOnly ? "" : "Racial and job traits are picked on the Identity and Job tabs; buy more with +."}</EmptyNote>
       ) : (
@@ -106,6 +151,24 @@ export default function TraitsTab() {
                 onEdit={() => openEdit(t)}
                 onLevelUp={() => setDialog({ kind: "level", traitId: t.traitId, direction: "up" })}
                 onLevelDown={() => setDialog({ kind: "level", traitId: t.traitId, direction: "down" })}
+                actions={
+                  play && (
+                    <>
+                      {(f.mpCost || f.epCost) ? (
+                        <button type="button" onClick={() => spend(t)} title="Spends the cost from your capacities"
+                          className="rounded-lg bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm hover:bg-violet-700">
+                          Spend {[f.mpCost ? `${f.mpCost} MP` : null, f.epCost ? `${f.epCost} EP` : null].filter(Boolean).join(" ")}
+                        </button>
+                      ) : null}
+                      {f.traitUses ? (
+                        <button type="button" onClick={() => use(t)} disabled={t.usesSpent >= f.traitUses} title="Spend one use"
+                          className="rounded-lg border border-violet-300 bg-white px-2.5 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-50 disabled:opacity-40">
+                          Use · {Math.max(0, f.traitUses - t.usesSpent)}/{f.traitUses}
+                        </button>
+                      ) : null}
+                    </>
+                  )
+                }
                 levelUpDisabled={t.lvl >= MAX_TRAIT_LEVEL ? `Traits stop at LVL ${MAX_TRAIT_LEVEL}` : cost > b.expRemaining ? `Needs ${cost} EXP` : null}
                 levelDownDisabled={t.lvl <= 1 ? "Already LVL 1" : null}
               >

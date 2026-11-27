@@ -216,6 +216,7 @@ public class CharacterAssembler {
                     row.getRaceId() == null ? null : row.getRaceId().toString(),
                     row.getJobId() == null ? null : row.getJobId().toString(),
                     row.getLvl(), row.getExpSpent(), row.getJobPointsSpent(), row.getNotes(),
+                    row.getUsesSpent() == null ? 0 : row.getUsesSpent(),
                     pick("trait_name", row.getTraitName(), t.getTraitName(), edited),
                     pick("purchase_cost", row.getPurchaseCost(), t.getPurchaseCost(), edited),
                     pick("lvl_up_cost", row.getLvlUpCost(), t.getLvlUpCost(), edited),

@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { AttributeName, CharacterCapacitiesDto } from "@/models/Character";
 import { ATTRIBUTES } from "@/models/Character";
 import { AdjustModal } from "../AdjustModal";
+import { HealthPanel } from "../HealthPanel";
+import { usePlay } from "../playContext";
 import { useBudget, useDraft, useReadOnly, useSheet, useStats, useUpdate } from "../hooks";
 import type { Stats } from "../rules";
 import { ATTRIBUTE_NAMES, attributeValue, sheetBase, signed } from "../rules";
@@ -38,9 +40,11 @@ export default function AttributesTab() {
   const s = useStats();
   const b = useBudget();
   const [open, setOpen] = useState<Open>(null);
+  const play = usePlay();
 
   return (
     <div className="space-y-4">
+      {play && <HealthPanel />}
       {!sheet && (
         <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">Choose a character sheet on the Identity tab to get starting attributes.</p>
       )}

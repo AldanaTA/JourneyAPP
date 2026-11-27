@@ -60,6 +60,8 @@ export interface DraftTrait {
   lvl: number;
   expSpent: number;
   notes: string;
+  /** Uses spent since the last rest. */
+  usesSpent: number;
   /** The compendium trait. */
   base: TraitFields;
   /** Only the fields changed for this character. */
@@ -364,7 +366,7 @@ export function powerFields(p: Power | CharacterPowerDto): PowerFields {
 
 /** A compendium trait added to the character. */
 export function draftTrait(trait: Trait, source: TraitSource, raceId: string | null, expSpent: number): DraftTrait {
-  return { traitId: trait.id, source, raceId, lvl: 1, expSpent, notes: "", base: traitFields(trait), edits: {}, baseKnown: true };
+  return { traitId: trait.id, source, raceId, lvl: 1, expSpent, notes: "", usesSpent: 0, base: traitFields(trait), edits: {}, baseKnown: true };
 }
 
 export function draftPower(power: Power, expSpent: number): DraftPower {
@@ -504,6 +506,7 @@ export function draftFromServer(c: CharacterDto, inv: CharacterInventoryDto, pre
         lvl: t.lvl,
         expSpent: t.expSpent,
         notes: t.notes,
+        usesSpent: t.usesSpent ?? 0,
         base: old?.baseKnown ? old.base : traitFields(t),
         edits,
         baseKnown,
@@ -605,6 +608,7 @@ export function toSaveBody(d: Draft): SaveCharacterBody {
       exp_spent: t.expSpent,
       notes: t.notes,
       edits: apiEdits(t.edits, TRAIT_FIELD_KEYS),
+      uses_spent: t.usesSpent,
     })),
     powers: d.powers.map((p) => ({
       power_id: p.powerId,

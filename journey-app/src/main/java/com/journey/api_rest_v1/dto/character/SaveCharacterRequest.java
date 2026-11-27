@@ -102,7 +102,9 @@ public record SaveCharacterRequest(
         @Min(1) @Max(6) int lvl,
         @Min(0) int exp_spent,
         String notes,
-        Map<String, Object> edits
+        Map<String, Object> edits,
+        /** Uses spent since the last rest (null: none). */
+        @Min(0) Integer uses_spent
     ) {
     }
 

@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Info, Trash2 } from "lucide-react";
+import { getItem } from "@/apis/characterApi";
+import type { Item } from "@/models/Item";
+import { formatItemCost, formatItemRarity, formatItemType, formatWeaponDamage } from "../../../compendium/components/items/itemFormatters";
 import type { InventoryLocation } from "@/models/Character";
 import { cn } from "@/lib/utils";
 import type { DraftItem } from "../draft";
@@ -9,7 +12,44 @@ import { PLACE_NAMES, attunedCount, attunementLimit, itemInSlot, itemLimit, item
 
 const PLACES: InventoryLocation[] = ["ARMOR", "LEFT_HAND", "RIGHT_HAND", "BOTH_HANDS", "BAG", "COMPONENTS", "QUEST"];
 
-/** One stack: quantity, its own stack limit, charges, attunement, notes, where it is, or remove it. */
+const ItemDetailsModal = lazy(() =>
+  import("../../../compendium/components/items/ItemDetailsModal").then((m) => ({ default: m.ItemDetailsModal })),
+);
+
+/** What the compendium says about the item: type, rarity, cost, text, and weapon stats. */
+function ItemInfo({ item, onMore }: { item: Item; onMore: () => void }) {
+  const damage = formatWeaponDamage(item);
+  const facts = [
+    formatItemType(item.itemType),
+    formatItemRarity(item.rarity),
+    item.isMagic ? "Magic" : null,
+    item.requiresAttunement ? "Requires attunement" : null,
+    item.costBronze !== null ? formatItemCost(item) : null,
+  ].filter(Boolean);
+  return (
+    <div className="mb-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+      <div className="flex flex-wrap gap-1.5">
+        {facts.map((fact) => (
+          <span key={fact} className="rounded-md bg-white px-1.5 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">{fact}</span>
+        ))}
+      </div>
+      {damage && (
+        <p className="text-slate-800">
+          <span className="font-semibold">Damage</span> {damage}
+          {item.weapon?.rangeFt ? ` · ${item.weapon.rangeFt} ft` : ""}
+          {item.weapon?.properties.length ? ` · ${item.weapon.properties.map((p) => p.name).join(", ")}` : ""}
+        </p>
+      )}
+      {item.description && <p className="whitespace-pre-line text-slate-700">{item.description}</p>}
+      {item.effect && <p className="whitespace-pre-line text-slate-800"><span className="font-semibold">Effect</span> {item.effect}</p>}
+      <button type="button" onClick={onMore} className="flex items-center gap-1 text-xs font-semibold text-violet-700">
+        <Info size={13} /> Full details
+      </button>
+    </div>
+  );
+}
+
+/** One stack: what it is, quantity, its own stack limit, charges, attunement, notes, where it is, or remove it. */
 export function ItemModal({ itemKey, onClose }: { itemKey: string; onClose: () => void }) {
   const d = useDraft();
   const readOnly = useReadOnly();
@@ -17,6 +57,17 @@ export function ItemModal({ itemKey, onClose }: { itemKey: string; onClose: () =
   const inv = d.inventory;
   const item = inv.items.find((i) => i.key === itemKey);
   const [ownLimit, setOwnLimit] = useState(item?.stackLimitOverride !== null && item?.stackLimitOverride !== undefined);
+  const [compendium, setCompendium] = useState<Item | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const compendiumId = item?.itemId ?? null;
+  useEffect(() => {
+    if (!compendiumId) return;
+    let cancelled = false;
+    getItem(compendiumId).then((found) => !cancelled && setCompendium(found)).catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [compendiumId]);
   if (!item) return null;
 
   const change = (recipe: (i: DraftItem) => void) =>
@@ -61,6 +112,12 @@ export function ItemModal({ itemKey, onClose }: { itemKey: string; onClose: () =
         </div>
       }
     >
+      {compendium && <ItemInfo item={compendium} onMore={() => setShowDetails(true)} />}
+      {compendium && showDetails && (
+        <Suspense fallback={null}>
+          <ItemDetailsModal item={compendium} isOpen onClose={() => setShowDetails(false)} />
+        </Suspense>
+      )}
       <fieldset disabled={readOnly} className="space-y-3">
         <TextField
           label={item.itemId ? "Name (optional)" : "Name"}

@@ -17,6 +17,8 @@ public record CharacterTraitDto(
     int expSpent,
     int jobPointsSpent,
     String notes,
+    /** Uses spent since the last rest. */
+    int usesSpent,
     String traitName,
     Integer purchaseCost,
     Integer lvlUpCost,

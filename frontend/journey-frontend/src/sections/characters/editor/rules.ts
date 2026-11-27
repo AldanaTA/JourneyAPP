@@ -201,3 +201,55 @@ export function stackLimit(override: number | null, base: number | null, multipl
   if (override !== null) return override;
   return base === null ? null : base * multiplier;
 }
+
+export type CapacityName = "HP" | "WP" | "EP" | "MP";
+
+const CURRENT: Record<CapacityName, "currentHp" | "currentWp" | "currentEp" | "currentMp"> = {
+  HP: "currentHp", WP: "currentWp", EP: "currentEp", MP: "currentMp",
+};
+const MAX: Record<CapacityName, "maxHp" | "maxWp" | "maxEp" | "maxMp"> = {
+  HP: "maxHp", WP: "maxWp", EP: "maxEp", MP: "maxMp",
+};
+
+/** A capacity's current value (not set yet = full). */
+export function currentOf(d: Draft, s: Stats, name: CapacityName): number {
+  return d.capacities[CURRENT[name]] ?? s[MAX[name]];
+}
+
+export function maxOf(s: Stats, name: CapacityName): number {
+  return s[MAX[name]];
+}
+
+/**
+ * Spends capacities (e.g. a power's 10 MP) from a draft copy. Returns what is short instead, changing nothing,
+ * when any of them is not enough.
+ */
+export function spendCapacities(d: Draft, s: Stats, costs: Partial<Record<CapacityName, number | null>>): string | null {
+  const wanted = (Object.entries(costs) as [CapacityName, number | null][]).filter(([, n]) => n && n > 0) as [CapacityName, number][];
+  const short = wanted.filter(([name, n]) => currentOf(d, s, name) < n).map(([name, n]) => `${n} ${name} (${currentOf(d, s, name)} left)`);
+  if (short.length) return `Not enough: ${short.join(", ")}`;
+  for (const [name, n] of wanted) d.capacities[CURRENT[name]] = currentOf(d, s, name) - n;
+  return null;
+}
+
+/** Damage: temporary HP goes first, then HP (not below 0). */
+export function takeDamage(d: Draft, s: Stats, amount: number) {
+  const absorbed = Math.min(d.capacities.tempHp, amount);
+  d.capacities.tempHp -= absorbed;
+  d.capacities.currentHp = Math.max(0, currentOf(d, s, "HP") - (amount - absorbed));
+}
+
+/** Healing, up to the maximum. */
+export function heal(d: Draft, s: Stats, amount: number) {
+  d.capacities.currentHp = Math.min(s.maxHp, currentOf(d, s, "HP") + amount);
+}
+
+/** Lowers a capacity (damage to WP, spending EP or MP), not below 0. HP damage uses takeDamage (temporary HP first). */
+export function lowerCapacity(d: Draft, s: Stats, name: CapacityName, amount: number) {
+  d.capacities[CURRENT[name]] = Math.max(0, currentOf(d, s, name) - amount);
+}
+
+/** Raises a capacity (healing, restoring), up to its maximum. */
+export function raiseCapacity(d: Draft, s: Stats, name: CapacityName, amount: number) {
+  d.capacities[CURRENT[name]] = Math.min(maxOf(s, name), currentOf(d, s, name) + amount);
+}

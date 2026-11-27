@@ -17,6 +17,7 @@ export function AbilityRow({
   onLevelDown,
   levelUpDisabled,
   levelDownDisabled,
+  actions,
 }: {
   title: string;
   summary: ReactNode;
@@ -29,15 +30,18 @@ export function AbilityRow({
   onLevelDown: () => void;
   levelUpDisabled?: string | null;
   levelDownDisabled?: string | null;
+  /** Buttons beside the row (in play: spend the cost, use the trait); outside the expand button. */
+  actions?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <li className={cn("rounded-2xl border bg-white shadow-sm transition", open ? "border-violet-200" : "border-slate-200")}>
+      <div className="flex items-center">
       <button
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left"
+        className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left"
       >
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -48,6 +52,8 @@ export function AbilityRow({
         </span>
         <ChevronDown size={18} className={cn("shrink-0 text-slate-400 transition", open && "rotate-180")} />
       </button>
+      {actions && <div className="flex shrink-0 flex-col items-end gap-1 py-2 pr-3">{actions}</div>}
+      </div>
       {open && (
         <div className="border-t border-slate-100 px-4 pb-3 pt-3">
           <div className="space-y-2 text-sm text-slate-700">{children}</div>

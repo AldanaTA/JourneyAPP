@@ -5,6 +5,7 @@ import { AdjustModal } from "../AdjustModal";
 import type { DraftSkill } from "../draft";
 import { emptySkill } from "../draft";
 import { useBudget, useDraft, useReadOnly, useUpdate } from "../hooks";
+import { usePlay } from "../playContext";
 import { useReferenceStore } from "../referenceStore";
 import { MAX_SKILL_SWAP, signed, skillRating } from "../rules";
 import { Chip, Panel, Stepper, ValueRow } from "../ui";
@@ -25,6 +26,7 @@ export default function SkillsTab() {
   const b = useBudget();
   const skills = useReferenceStore((state) => state.skills);
   const [open, setOpen] = useState<SkillInfo | null>(null);
+  const play = usePlay();
   const isDraft = d.status === "DRAFT";
 
   const set = (skill: SkillInfo, field: keyof DraftSkill, value: number) =>
@@ -63,6 +65,8 @@ export default function SkillsTab() {
                     value={`${skillRating(d, skill)}%`}
                     readOnly={readOnly}
                     onAdjust={() => setOpen(skill)}
+                    onTap={play ? () => play.rollSkill(skill.name, skillRating(d, skill)) : undefined}
+                    tapLabel={`Roll ${skill.name}`}
                     chips={
                       <>
                         {s.failures > 0 && <Chip label="Fail" value={s.failures} tone="slate" />}

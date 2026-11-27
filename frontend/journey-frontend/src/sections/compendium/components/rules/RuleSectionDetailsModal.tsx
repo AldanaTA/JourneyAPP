@@ -86,7 +86,7 @@ export function RuleSectionDetailsModal({ result, isOpen, onClose }: RuleSection
     <>
       {createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/80 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
