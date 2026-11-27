@@ -8,6 +8,8 @@ public record CharacterExpAwardDto(
     int amount,
     String reason,
     String awardedByUserId,
+    /** Who gave it (display name); null when unknown. */
+    String awardedByName,
     String createdAt
 ) {
 }

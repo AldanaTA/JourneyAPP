@@ -13,6 +13,9 @@ public record PowerFilterRequest(
     Integer size,
     Integer tpCost,
     String tpOperator,
+    /** The power's level, compared with lvlOperator (e.g. LVL 3 or below for Destructive Spells). */
+    Integer lvl,
+    String lvlOperator,
     Integer hpCost,
     String hpOperator,
     Integer mpCost,
@@ -33,6 +36,10 @@ public record PowerFilterRequest(
 
     public int getSize() {
         return size != null && size > 0 ? size : 5;
+    }
+
+    public String getLvlOperator() {
+        return normalizeOperator(lvlOperator);
     }
 
     public String getTpOperator() {

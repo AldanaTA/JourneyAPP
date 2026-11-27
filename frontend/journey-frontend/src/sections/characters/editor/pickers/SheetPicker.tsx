@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { CharacterSheet } from "@/models/Character";
 import type { AttributeName } from "@/models/Character";
-import { useReferenceStore } from "../referenceStore";
+import { useSheetOptions } from "../hooks";
 import { ATTRIBUTE_NAMES, sheetBase } from "../rules";
 import { FilterChips, PickerModal } from "./PickerModal";
 
@@ -22,7 +22,10 @@ export default function SheetPicker({
   onPick: (sheet: CharacterSheet) => void;
   onClose: () => void;
 }) {
-  const sheets = useReferenceStore((state) => state.sheets);
+  // The official sheets, then (for a campaign character) the campaign's own.
+  const options = useSheetOptions();
+  const sheets = [...options.official, ...options.campaign];
+  const campaignIds = new Set(options.campaign.map((s) => s.id));
   const [focus, setFocus] = useState<AttributeName | null>(null);
   const highest = (sheet: CharacterSheet) =>
     FOCUS.reduce((best, f) => (sheetBase(sheet, f.value) > sheetBase(sheet, best) ? f.value : best), "BODY" as AttributeName);
@@ -33,7 +36,7 @@ export default function SheetPicker({
       subtitle="Your starting attributes"
       searchPlaceholder="Search sheets"
       filters={<FilterChips label="Highest attribute" options={FOCUS} value={focus} onChange={setFocus} />}
-      filterKey={focus ?? ""}
+      filterKey={`${focus ?? ""}|${sheets.length}`}
       load={async (page, size, search) => {
         const matches = sheets.filter(
           (s) => s.name.toLowerCase().includes(search.toLowerCase()) && (focus === null || highest(s) === focus),
@@ -44,7 +47,10 @@ export default function SheetPicker({
       initialSelected={sheets.filter((s) => s.id === currentId)}
       renderRow={(s) => (
         <>
-          <span className="block font-semibold text-slate-900">{s.name}</span>
+          <span className="flex items-center gap-2 font-semibold text-slate-900">
+            {s.name}
+            {campaignIds.has(s.id) && <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-violet-700">Campaign</span>}
+          </span>
           <span className="mt-1 flex flex-wrap gap-1.5 text-xs text-slate-600">
             {FOCUS.map((f) => (
               <span key={f.value} className="rounded bg-slate-100 px-1.5 py-0.5 tabular-nums">

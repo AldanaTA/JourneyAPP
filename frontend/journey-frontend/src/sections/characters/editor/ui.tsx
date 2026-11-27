@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Minus, Plus, X } from "lucide-react";
+import { NumberInput } from "@/components/NumberInput";
 import { cn } from "@/lib/utils";
 
 export const inputClass =
@@ -240,15 +241,12 @@ export function Stepper({
         >
           <Minus size={16} />
         </button>
-        <input
+        <NumberInput
           id={id}
-          type="number"
-          inputMode="numeric"
           value={value}
-          onChange={(event) => {
-            const n = Number.parseInt(event.target.value, 10);
-            onChange(clamp(Number.isNaN(n) ? 0 : n));
-          }}
+          min={min}
+          max={max}
+          onChange={(n) => onChange(clamp(n ?? 0))}
           className="h-9 w-16 rounded-lg border border-slate-200 bg-white text-center text-base font-semibold tabular-nums outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 sm:text-sm"
         />
         <button

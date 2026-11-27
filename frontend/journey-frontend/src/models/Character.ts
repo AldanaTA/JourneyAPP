@@ -172,6 +172,8 @@ export interface CharacterBudgetDto {
 
 export interface CharacterDto {
   id: string;
+  /** The player the character belongs to. */
+  userId: string;
   name: string;
   status: CharacterStatus;
   description: string;
@@ -190,6 +192,8 @@ export interface CharacterDto {
   raceLanguages: string | null;
   learnedLanguages: string;
   sourceIds: string[];
+  /** The campaign this is a campaign version for; null for the player's own characters. */
+  campaign: NamedRef | null;
   startingExp: number;
   jobPoints: number;
   capacities: CharacterCapacitiesDto;

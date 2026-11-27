@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Trash2 } from "lucide-react";
 import type { ContentKind } from "@/apis/campaignApi";
 import { createContent, deleteContent, updateContent } from "@/apis/campaignApi";
+import { NumberInput } from "@/components/NumberInput";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog, Modal, PrimaryButton, SecondaryButton, inputClass } from "../../characters/editor/ui";
 
@@ -156,15 +157,7 @@ export function Num({ label, value, onChange, min = 0 }: { label: string; value:
   return (
     <div className="space-y-1">
       <Label id={id}>{label}</Label>
-      <input
-        id={id}
-        type="number"
-        inputMode="numeric"
-        min={min}
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value === "" ? null : Math.max(min, Number.parseInt(e.target.value, 10) || 0))}
-        className={inputClass}
-      />
+      <NumberInput id={id} value={value} min={min} allowEmpty onChange={onChange} className={inputClass} />
     </div>
   );
 }

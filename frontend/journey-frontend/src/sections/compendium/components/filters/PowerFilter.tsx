@@ -18,11 +18,12 @@ const powerCategoryOptions: PowerCategory[] = [
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-type CostKey = "tpCost" | "hpCost" | "mpCost" | "epCost";
-type OperatorKey = "tpOperator" | "hpOperator" | "mpOperator" | "epOperator";
+type CostKey = "lvl" | "tpCost" | "hpCost" | "mpCost" | "epCost";
+type OperatorKey = "lvlOperator" | "tpOperator" | "hpOperator" | "mpOperator" | "epOperator";
 
 /** Every resource cost row shown in the filter sheet. */
 const costFields: Array<{ label: string; key: CostKey; opKey: OperatorKey }> = [
+  { label: "LVL", key: "lvl", opKey: "lvlOperator" },
   { label: "TP", key: "tpCost", opKey: "tpOperator" },
   { label: "HP", key: "hpCost", opKey: "hpOperator" },
   { label: "MP", key: "mpCost", opKey: "mpOperator" },
@@ -34,7 +35,9 @@ interface PowerFilterState {
   type: PowerType | "";
   categories: PowerCategory[];
   matchAll: boolean;
+  lvl: number | "";
   tpCost: number | "";
+  lvlOperator: Operator;
   tpOperator: Operator;
   hpCost: number | "";
   hpOperator: Operator;
@@ -55,7 +58,9 @@ const initialState: PowerFilterState = {
   type: "",
   categories: [],
   matchAll: false,
+  lvl: "",
   tpCost: "",
+  lvlOperator: "lte",
   tpOperator: "lte",
   hpCost: "",
   hpOperator: "lte",
@@ -72,7 +77,9 @@ function stateFromRequest(request: PowerFilterRequest | null | undefined): Power
     type: request.type ?? "",
     categories: request.categories,
     matchAll: request.matchAll,
+    lvl: request.lvl ?? "",
     tpCost: request.tpCost ?? "",
+    lvlOperator: request.lvlOperator ?? "lte",
     tpOperator: request.tpOperator,
     hpCost: request.hpCost ?? "",
     hpOperator: request.hpOperator,
@@ -101,7 +108,9 @@ function buildRequest(state: PowerFilterState, search: string): PowerFilterReque
     matchAll: state.matchAll,
     page: 0,
     size: 5,
+    lvl: state.lvl === "" ? null : state.lvl,
     tpCost: state.tpCost === "" ? null : state.tpCost,
+    lvlOperator: state.lvlOperator,
     tpOperator: state.tpOperator,
     hpCost: state.hpCost === "" ? null : state.hpCost,
     hpOperator: state.hpOperator,
@@ -269,7 +278,7 @@ export function PowerFilter({ onApply, initialFilters = null }: PowerFilterProps
       {/* Portaled to <body> so ancestors with backdrop-filter/transform cannot trap the fixed overlay. */}
       {menuOpen && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/60 sm:items-center sm:p-4"
           onClick={() => setMenuOpen(false)}
         >
           <div
@@ -350,7 +359,7 @@ export function PowerFilter({ onApply, initialFilters = null }: PowerFilterProps
               </div>
 
               <div className="space-y-3">
-                <span className="block text-sm font-medium text-slate-700">Resource Costs</span>
+                <span className="block text-sm font-medium text-slate-700">LVL and resource costs</span>
                 {costFields.map(({ label, key, opKey }) => (
                   <div key={key} className="grid grid-cols-[72px_64px_minmax(0,1fr)] items-center gap-2">
                     <label htmlFor={`power-filter-${key}`} className="text-sm text-slate-700">{label}</label>

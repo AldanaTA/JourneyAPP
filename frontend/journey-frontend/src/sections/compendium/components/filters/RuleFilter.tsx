@@ -166,7 +166,7 @@ export function RuleFilter({ onApply, initialFilters = null }: RuleFilterProps) 
       {/* Portaled to <body> so ancestors with backdrop-filter/transform cannot trap the fixed overlay. */}
       {menuOpen && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/60 sm:items-center sm:p-4"
           onClick={() => setMenuOpen(false)}
         >
           <form

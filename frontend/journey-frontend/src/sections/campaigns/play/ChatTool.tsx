@@ -238,7 +238,7 @@ function Composer() {
             <>
               <input value={rating} onChange={(e) => setRating(e.target.value)} inputMode="numeric" aria-label="Skill rating" className={cn(small, "w-16")} />
               <span className="text-xs text-slate-500">%</span>
-              <input value={modifier} onChange={(e) => setModifier(e.target.value)} inputMode="numeric" aria-label="Modifier" title="Modifier" className={cn(small, "w-14")} />
+              <input value={modifier} onChange={(e) => setModifier(e.target.value.replace(/[^\d-]/g, "").replace(/(?!^)-/g, ""))} inputMode="text" pattern="-?[0-9]*" aria-label="Modifier" title="Modifier" className={cn(small, "w-14")} />
             </>
           ) : (
             <input value={formula} onChange={(e) => setFormula(e.target.value)} aria-label="Dice formula" placeholder="2d6+3" className={cn(small, "w-28")} />

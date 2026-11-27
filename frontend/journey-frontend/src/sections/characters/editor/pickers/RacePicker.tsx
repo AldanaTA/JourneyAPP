@@ -1,11 +1,17 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { filterRaces } from "@/apis/raceApi";
-import type { Race, RaceSize } from "@/models/Race";
+import type { Race } from "@/models/Race";
 import { useSearchSourceIds } from "../referenceStore";
-import { SIZE_NAMES, SIZE_ORDER } from "../rules";
-import { FilterChips, PickerModal } from "./PickerModal";
+import { SIZE_NAMES } from "../rules";
+import { PickerModal } from "./PickerModal";
+import type { RaceFilterRequest } from "@/apis/raceApi";
+import { RaceFilter } from "@/sections/compendium/components/filters/RaceFilter";
 
-const SIZES = SIZE_ORDER.map((s) => ({ value: s, label: SIZE_NAMES[s] }));
+const NO_RACE_FILTERS: RaceFilterRequest = { sizes: [], movement: null, movementOperator: "lte", page: 0, size: 20, name: null, traitName: null };
+
+const RaceDetailsModal = lazy(() =>
+  import("@/sections/compendium/components/races/RaceDetailsModal").then((m) => ({ default: m.RaceDetailsModal })),
+);
 
 function sizeRange(race: Race): string {
   return race.maxRaceSize && race.maxRaceSize !== race.minRaceSize
@@ -25,22 +31,22 @@ export default function RacePicker({
   onClose: () => void;
 }) {
   const sourceIds = useSearchSourceIds();
-  const [size, setSize] = useState<RaceSize | null>(null);
+  const [request, setRequest] = useState<RaceFilterRequest | null>(null);
   return (
     <PickerModal<Race>
       title="Choose race"
       subtitle="Pick more than one for a mixed race; it then chooses 50 EXP of racial traits."
       searchPlaceholder="Search races"
-      filters={<FilterChips label="Size" options={SIZES} value={size} onChange={setSize} />}
-      filterKey={`${size}|${sourceIds.join(",")}`}
-      load={(page, pageSize, search) =>
-        filterRaces(
-          { sizes: size ? [size] : [], movement: null, movementOperator: "lte", page, size: pageSize, name: search || null, traitName: null, sourceIds },
-          page,
-          pageSize,
-        )
-      }
+      hideSearch
+      filters={<div className="w-full"><RaceFilter onApply={setRequest} initialFilters={request} /></div>}
+      filterKey={`${JSON.stringify(request)}|${sourceIds.join(",")}`}
+      load={(page, pageSize) => filterRaces({ ...(request ?? NO_RACE_FILTERS), sourceIds, page, size: pageSize }, page, pageSize)}
       getId={(r) => r.id}
+      renderFullDetails={(r, close) => (
+        <Suspense fallback={null}>
+          <RaceDetailsModal race={r} isOpen onClose={close} />
+        </Suspense>
+      )}
       multiple
       initialSelected={current}
       renderRow={(r) => (

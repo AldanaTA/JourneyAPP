@@ -42,18 +42,25 @@ const SCOPES: { value: Scope; label: string }[] = [
  */
 export default function SearchTool() {
   const campaign = useCampaign();
-  const [query, setQuery] = useState("");
-  const [scope, setScope] = useState<Scope>("all");
-  const [hits, setHits] = useState<Hit[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState<Hit | null>(null);
   const [sourceIds, setSourceIds] = useState<string[] | null>(null);
-
   useEffect(() => {
     getContentSources()
       .then((all) => setSourceIds([campaign.id, ...all.filter((s) => s.kind === "core").map((s) => s.id), ...campaign.allowedSources.map((s) => s.id)]))
       .catch(() => setSourceIds([campaign.id]));
   }, [campaign.id, campaign.allowedSources]);
+  return <CompendiumSearch sourceIds={sourceIds} hint="Search this campaign's content, its books, and the core rules." />;
+}
+
+/**
+ * Searches the compendium within some content sources (null while they load): traits, powers, items, creatures,
+ * races, jobs, and rules text. Tap a result for its full card. Used in play and while building a character.
+ */
+export function CompendiumSearch({ sourceIds, hint }: { sourceIds: string[] | null; hint: string }) {
+  const [query, setQuery] = useState("");
+  const [scope, setScope] = useState<Scope>("all");
+  const [hits, setHits] = useState<Hit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState<Hit | null>(null);
 
   useEffect(() => {
     const q = query.trim();
@@ -64,7 +71,7 @@ export default function SearchTool() {
       const kinds = scope === "all" ? (Object.keys(KINDS) as ContentTabKind[]) : scope === "rules" ? [] : [scope];
       const size = scope === "all" ? 4 : 20;
       const contentSearches = kinds.map((kind) =>
-        filterContent<{ id: string }>(kind as ContentKind, { ...KINDS[kind].body(q, "", campaign.id), sourceIds, page: 0, size })
+        filterContent<{ id: string }>(kind as ContentKind, { ...KINDS[kind].body(q, "", ""), sourceIds, page: 0, size })
           .then((page) => page.content.map((entry): Hit => ({
             kind, id: entry.id, name: KINDS[kind].nameOf(entry as never), summary: KINDS[kind].summary(entry as never), entry,
           })))
@@ -86,7 +93,7 @@ export default function SearchTool() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [query, scope, sourceIds, campaign.id]);
+  }, [query, scope, sourceIds]);
 
   const close = () => setOpen(null);
   return (
@@ -101,7 +108,7 @@ export default function SearchTool() {
         </select>
       </div>
       {!query.trim() ? (
-        <p className="py-6 text-center text-sm text-slate-400">Search this campaign's content, its books, and the core rules.</p>
+        <p className="py-6 text-center text-sm text-slate-400">{hint}</p>
       ) : (
         <ul className={cn("space-y-1 transition-opacity", loading && "opacity-50")}>
           {!loading && hits.length === 0 && <li className="py-4 text-center text-sm text-slate-400">Nothing found.</li>}

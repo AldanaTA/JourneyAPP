@@ -18,11 +18,7 @@ public class CampaignContentCheck {
 
     /** The allowed sources, then one SELECT per kind of content. */
     private static final String ISSUES_SQL = """
-            WITH allowed AS (
-                SELECT id FROM content_sources WHERE CAST(kind AS TEXT) = 'core'
-                UNION SELECT source_id FROM campaign_allowed_sources WHERE campaign_id = :campaign
-                UNION SELECT CAST(:campaign AS uuid)
-            ),
+            WITH allowed AS (%s),
             bad_races AS (
                 SELECT cr.race_id FROM character_races cr JOIN races r ON r.id = cr.race_id
                 WHERE cr.character_id = :character AND r.source_id NOT IN (SELECT id FROM allowed)
@@ -69,6 +65,23 @@ public class CampaignContentCheck {
             ORDER BY ord, name
             """;
 
+    /** A campaign allows the core rules, its listed sources, and its own content. */
+    private static final String CAMPAIGN_ALLOWED = """
+            SELECT id FROM content_sources WHERE CAST(kind AS TEXT) = 'core'
+            UNION SELECT source_id FROM campaign_allowed_sources WHERE campaign_id = :campaign
+            UNION SELECT CAST(:campaign AS uuid)
+            """;
+
+    /**
+     * What a user owns, for exporting a character to their own list: the core rules, public books (e.g. Calthora),
+     * books they have an entitlement to, and campaigns they own.
+     */
+    private static final String OWNED = """
+            SELECT id FROM content_sources
+            WHERE CAST(kind AS TEXT) = 'core' OR CAST(visibility AS TEXT) = 'public' OR owner_user_id = :user
+            UNION SELECT source_id FROM user_entitlements WHERE user_id = :user
+            """;
+
     private final NamedParameterJdbcTemplate jdbc;
 
     public CampaignContentCheck(NamedParameterJdbcTemplate jdbc) {
@@ -77,14 +90,23 @@ public class CampaignContentCheck {
 
     /** Everything in the character that the campaign does not allow (empty when it all fits). */
     public List<ContentIssueDto> issues(UUID characterId, UUID campaignId) {
-        return jdbc.query(ISSUES_SQL, new MapSqlParameterSource().addValue("character", characterId)
-                .addValue("campaign", campaignId),
+        return query(CAMPAIGN_ALLOWED, new MapSqlParameterSource().addValue("character", characterId)
+                .addValue("campaign", campaignId));
+    }
+
+    /** Everything in the character from sources the user does not own (see {@link #OWNED}). */
+    public List<ContentIssueDto> issuesNotOwned(UUID characterId, UUID userId) {
+        return query(OWNED, new MapSqlParameterSource().addValue("character", characterId).addValue("user", userId));
+    }
+
+    private List<ContentIssueDto> query(String allowed, MapSqlParameterSource params) {
+        return jdbc.query(ISSUES_SQL.formatted(allowed), params,
                 (rs, i) -> new ContentIssueDto(rs.getString("kind"), rs.getString("id"), rs.getString("name"),
                         rs.getString("source"), rs.getString("reason"), rs.getInt("exp_spent"), rs.getInt("quantity")));
     }
 
     /**
-     * Removes the issues from a campaign version (never from an original). A removed race takes its racial traits
+     * Removes the issues from a copy (a campaign version or an export; never from an original). A removed race takes its racial traits
      * with it; a removed job its job traits. When a race, job, or sheet goes, the character becomes a draft so the
      * player can choose again.
      */
@@ -92,7 +114,7 @@ public class CampaignContentCheck {
         MapSqlParameterSource p = new MapSqlParameterSource("character", characterId);
         boolean unfinished = issues.stream().anyMatch(i -> List.of("RACE", "JOB", "SHEET").contains(i.kind()));
         if (unfinished) {
-            jdbc.update("UPDATE characters SET status = 'draft' WHERE id = :character AND campaign_id IS NOT NULL", p);
+            jdbc.update("UPDATE characters SET status = 'draft' WHERE id = :character", p);
         }
         for (ContentIssueDto issue : issues) {
             MapSqlParameterSource q = new MapSqlParameterSource("character", characterId)

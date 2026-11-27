@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { listCampaignSheets } from "@/apis/campaignApi";
 import { getCharacterReferenceData, getContentSources } from "@/apis/characterApi";
 import type { CharacterSheet, ContentSource, SkillInfo } from "@/models/Character";
 import { useDraftStore } from "./draftStore";
@@ -9,6 +10,9 @@ interface ReferenceState {
   skills: SkillInfo[];
   sources: ContentSource[];
   status: "idle" | "loading" | "ready" | "error";
+  /** Campaigns' own sheets, by campaign id (loaded when a campaign character is open). */
+  campaignSheets: Record<string, CharacterSheet[]>;
+  loadCampaignSheets: (campaignId: string) => Promise<void>;
   error: string | null;
   load: () => Promise<void>;
 }
@@ -18,6 +22,16 @@ export const useReferenceStore = create<ReferenceState>((set, get) => ({
   skills: [],
   sources: [],
   status: "idle",
+  campaignSheets: {},
+  loadCampaignSheets: async (campaignId) => {
+    if (get().campaignSheets[campaignId]) return;
+    try {
+      const list = await listCampaignSheets(campaignId);
+      set({ campaignSheets: { ...get().campaignSheets, [campaignId]: list } });
+    } catch {
+      // Without them the official sheets are still offered.
+    }
+  },
   error: null,
   load: async () => {
     if (get().status === "loading" || get().status === "ready") return;

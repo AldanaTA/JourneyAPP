@@ -229,6 +229,10 @@ export interface Draft {
   notes: string;
   learnedLanguages: string;
   sourceIds: string[];
+  /** The campaign this character belongs to (its sheets are offered too); null outside campaigns. */
+  campaignId: string | null;
+  /** The player the character belongs to; null until the first save. */
+  userId: string | null;
   sheetId: string | null;
   size: RaceSize | null;
   races: DraftRace[];
@@ -265,7 +269,7 @@ export function emptySkill(): DraftSkill {
 }
 
 /** A brand-new character, before it is saved. */
-export function newDraft(sourceIds: string[]): Draft {
+export function newDraft(sourceIds: string[], campaignId: string | null = null): Draft {
   return {
     id: null,
     status: "DRAFT",
@@ -280,6 +284,8 @@ export function newDraft(sourceIds: string[]): Draft {
     notes: "",
     learnedLanguages: "",
     sourceIds,
+    campaignId,
+    userId: null,
     sheetId: null,
     size: null,
     races: [],
@@ -474,6 +480,8 @@ export function draftFromServer(c: CharacterDto, inv: CharacterInventoryDto, pre
     notes: c.notes,
     learnedLanguages: c.learnedLanguages,
     sourceIds: c.sourceIds,
+    campaignId: c.campaign?.id ?? null,
+    userId: c.userId,
     sheetId: c.characterSheet?.id ?? null,
     size: c.size,
     races: c.races.map((r) => ({
@@ -568,6 +576,7 @@ export function toSaveBody(d: Draft): SaveCharacterBody {
     strengths: d.strengths,
     flaws: d.flaws,
     learned_languages: d.learnedLanguages,
+    starting_exp: d.startingExp,
     history: d.history,
     important_characters: d.importantCharacters,
     notes: d.notes,

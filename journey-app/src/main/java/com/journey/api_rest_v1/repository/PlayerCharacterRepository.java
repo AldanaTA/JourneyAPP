@@ -122,4 +122,21 @@ public interface PlayerCharacterRepository extends JpaRepository<PlayerCharacter
     @Query(value = "INSERT INTO character_content_sources (character_id, source_id) VALUES (:id, :sourceId)",
             nativeQuery = true)
     void addSource(@Param("id") UUID characterId, @Param("sourceId") UUID sourceId);
+
+    /** Makes a just-created character a campaign character (campaign_id is not written through the entity). */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE characters SET campaign_id = :campaign WHERE id = :id", nativeQuery = true)
+    void setCampaign(@Param("id") UUID characterId, @Param("campaign") UUID campaignId);
+
+    /** The character's campaign, or null. */
+    @Query(value = "SELECT CAST(campaign_id AS TEXT) FROM characters WHERE id = :id", nativeQuery = true)
+    String findCampaignId(@Param("id") UUID characterId);
+
+    /** How many of these sources the campaign allows (the core rules, its listed sources, and itself). */
+    @Query(value = """
+            SELECT COUNT(*) FROM content_sources s WHERE s.id IN (:ids)
+              AND (CAST(s.kind AS TEXT) = 'core' OR s.id = :campaign
+                   OR s.id IN (SELECT source_id FROM campaign_allowed_sources WHERE campaign_id = :campaign))
+            """, nativeQuery = true)
+    long countCampaignSources(@Param("ids") java.util.Collection<UUID> ids, @Param("campaign") UUID campaignId);
 }

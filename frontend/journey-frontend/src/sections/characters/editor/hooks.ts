@@ -21,10 +21,20 @@ export function useUpdate() {
   return useDraftStore((state) => state.update);
 }
 
+const NO_SHEETS: CharacterSheet[] = [];
+
+/** The sheets the character can use: the official ones, plus its campaign's own for a campaign character. */
+export function useSheetOptions(): { official: CharacterSheet[]; campaign: CharacterSheet[] } {
+  const campaignId = useDraftStore((state) => state.draft?.campaignId ?? null);
+  const official = useReferenceStore((state) => state.sheets);
+  const campaign = useReferenceStore((state) => (campaignId ? state.campaignSheets[campaignId] : undefined)) ?? NO_SHEETS;
+  return { official, campaign };
+}
+
 export function useSheet(): CharacterSheet | undefined {
   const sheetId = useDraftStore((state) => state.draft?.sheetId);
-  const sheets = useReferenceStore((state) => state.sheets);
-  return sheets.find((s) => s.id === sheetId);
+  const { official, campaign } = useSheetOptions();
+  return official.find((s) => s.id === sheetId) ?? campaign.find((s) => s.id === sheetId);
 }
 
 /** EXP and job points, worked out from the draft. */

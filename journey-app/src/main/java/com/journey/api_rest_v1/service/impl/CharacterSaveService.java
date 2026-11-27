@@ -131,7 +131,13 @@ public class CharacterSaveService {
         for (String value : sourceIds) {
             ids.add(CharacterAccess.parseUuid(value, "source"));
         }
-        if (!ids.isEmpty() && sourceRepository.countAvailable(ids, currentUser.requireId(), currentUser.isAdmin()) != ids.size()) {
+        String campaign = characterRepository.findCampaignId(characterId);
+        if (campaign != null) {
+            // A campaign character uses what its campaign allows (the storyteller chose those books).
+            if (!ids.isEmpty() && characterRepository.countCampaignSources(ids, UUID.fromString(campaign)) != ids.size()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the content sources is not allowed in this campaign");
+            }
+        } else if (!ids.isEmpty() && sourceRepository.countAvailable(ids, currentUser.requireId(), currentUser.isAdmin()) != ids.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One of the content sources is not available to you");
         }
         characterRepository.clearSources(characterId);

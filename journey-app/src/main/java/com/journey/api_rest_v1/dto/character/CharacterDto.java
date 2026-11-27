@@ -10,6 +10,8 @@ import com.journey.api_rest_v1.domain.races.RaceSize;
  */
 public record CharacterDto(
     String id,
+    /** The player the character belongs to (a storyteller may be editing it). */
+    String userId,
     String name,
     CharacterStatus status,
     String description,

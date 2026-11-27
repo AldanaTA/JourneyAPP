@@ -219,9 +219,12 @@ export default function PowersTab() {
           compendium={current.baseKnown ? current.base : null}
           edited={new Set(Object.keys(current.edits))}
           onClose={() => setDialog(null)}
-          onSave={(notes, values, reset) =>
+          progress={{ lvl: current.lvl, expSpent: current.expSpent }}
+          onSave={(notes, values, reset, progress) =>
             change(current.powerId, (p) => {
               p.notes = notes;
+              p.lvl = progress.lvl;
+              p.expSpent = progress.expSpent;
               p.edits = applyEdits(p.base, p.baseKnown, p.edits, effectivePower(p), values, reset);
             })
           }

@@ -1,12 +1,22 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { filterPowers } from "@/apis/powerApi";
-import type { Power, PowerType } from "@/models/Power";
+import type { Power } from "@/models/Power";
 import { formatPowerCost } from "@/sections/compendium/components/powers/powerFormatters";
 import { useSearchSourceIds } from "../referenceStore";
 import { POWER_COST } from "../rules";
-import { FilterChips, PickerModal } from "./PickerModal";
+import { PickerModal } from "./PickerModal";
+import type { PowerFilterRequest } from "@/apis/powerApi";
+import { PowerFilter } from "@/sections/compendium/components/filters/PowerFilter";
 
-const POWER_TYPES: PowerType[] = ["Destruction", "Support", "Sabotage", "Utility"];
+const NO_POWER_FILTERS: PowerFilterRequest = {
+  type: null, categories: [], matchAll: false, page: 0, size: 20, tpCost: null, tpOperator: "lte", hpCost: null, hpOperator: "lte",
+  mpCost: null, mpOperator: "lte", epCost: null, epOperator: "lte", name: null,
+};
+
+const PowerDetailsModal = lazy(() =>
+  import("@/sections/compendium/components/powers/PowerDetailsModal").then((m) => ({ default: m.PowerDetailsModal })),
+);
+
 
 /** Learn one power (10 EXP). */
 export default function PowerPicker({
@@ -21,38 +31,22 @@ export default function PowerPicker({
   onClose: () => void;
 }) {
   const sourceIds = useSearchSourceIds();
-  const [type, setType] = useState<PowerType | null>(null);
+  const [request, setRequest] = useState<PowerFilterRequest | null>(null);
   return (
     <PickerModal<Power>
       title="Learn a power"
       subtitle={`${POWER_COST} EXP each · ${expRemaining} EXP left`}
       searchPlaceholder="Search powers"
-      filters={<FilterChips label="Type" options={POWER_TYPES.map((t) => ({ value: t, label: t }))} value={type} onChange={setType} />}
-      filterKey={`${type}|${sourceIds.join(",")}`}
-      load={(page, size, search) =>
-        filterPowers(
-          {
-            type,
-            categories: [],
-            matchAll: false,
-            page,
-            size,
-            tpCost: null,
-            tpOperator: "lte",
-            hpCost: null,
-            hpOperator: "lte",
-            mpCost: null,
-            mpOperator: "lte",
-            epCost: null,
-            epOperator: "lte",
-            name: search || null,
-            sourceIds,
-          },
-          page,
-          size,
-        )
-      }
+      hideSearch
+      filters={<div className="w-full"><PowerFilter onApply={setRequest} initialFilters={request} /></div>}
+      filterKey={`${JSON.stringify(request)}|${sourceIds.join(",")}`}
+      load={(page, size) => filterPowers({ ...(request ?? NO_POWER_FILTERS), sourceIds, page, size }, page, size)}
       getId={(p) => p.id}
+      renderFullDetails={(p, close) => (
+        <Suspense fallback={null}>
+          <PowerDetailsModal power={p} isOpen onClose={close} />
+        </Suspense>
+      )}
       disabledReason={(p) => (ownedIds.has(p.id) ? "Already known" : expRemaining < POWER_COST ? `Needs ${POWER_COST} EXP` : null)}
       renderRow={(p) => (
         <>

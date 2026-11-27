@@ -228,9 +228,12 @@ export default function TraitsTab() {
           compendium={current.baseKnown ? current.base : null}
           edited={new Set(Object.keys(current.edits))}
           onClose={() => setDialog(null)}
-          onSave={(notes, values, reset) =>
+          progress={{ lvl: current.lvl, expSpent: current.expSpent, maxLvl: MAX_TRAIT_LEVEL }}
+          onSave={(notes, values, reset, progress) =>
             change(current.traitId, (t) => {
               t.notes = notes;
+              t.lvl = progress.lvl;
+              t.expSpent = progress.expSpent;
               t.edits = applyEdits(t.base, t.baseKnown, t.edits, effectiveTrait(t), values, reset);
             })
           }

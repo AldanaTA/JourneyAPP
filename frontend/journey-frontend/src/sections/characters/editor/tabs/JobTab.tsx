@@ -8,6 +8,7 @@ import { draftTrait, emptySkill } from "../draft";
 import { useBudget, useDraft, useReadOnly, useSheet, useUpdate } from "../hooks";
 import { useReferenceStore } from "../referenceStore";
 import { ATTRIBUTE_NAMES, attributeValue, skillRating } from "../rules";
+import { TraitInfoButton } from "../TraitInfoButton";
 import { Chip, EmptyNote, Panel, Stepper, ValueRow } from "../ui";
 
 const JobPicker = lazy(() => import("../pickers/JobPicker"));
@@ -82,7 +83,8 @@ export default function JobTab() {
               const tooMuch = !on && cost > left;
               return (
                 <li key={trait.id}>
-                  <button
+                  <div className="flex items-center gap-1">
+<button
                     type="button"
                     disabled={readOnly || ownedOtherwise || tooMuch}
                     onClick={() =>
@@ -92,7 +94,7 @@ export default function JobTab() {
                       })
                     }
                     className={cn(
-                      "flex w-full items-start gap-3 rounded-xl border px-3 py-2 text-left",
+                      "flex min-w-0 flex-1 w-full items-start gap-3 rounded-xl border px-3 py-2 text-left",
                       on ? "border-violet-300 bg-violet-50" : "border-slate-200 bg-white",
                       (ownedOtherwise || tooMuch) && "opacity-55",
                     )}
@@ -114,6 +116,8 @@ export default function JobTab() {
                       {ownedOtherwise && <span className="block text-xs text-amber-700">Already has it</span>}
                     </span>
                   </button>
+<TraitInfoButton trait={trait} />
+</div>
                 </li>
               );
             })}

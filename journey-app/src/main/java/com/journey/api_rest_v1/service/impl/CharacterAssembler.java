@@ -120,7 +120,7 @@ public class CharacterAssembler {
         Race languageRace = c.getLanguageRaceId() == null ? null : racesById.get(c.getLanguageRaceId());
 
         return new CharacterDto(
-                id.toString(), c.getName(), c.getStatus(),
+                id.toString(), c.getUserId().toString(), c.getName(), c.getStatus(),
                 c.getDescription(), c.getMotive(), c.getIdeals(), c.getStrengths(), c.getFlaws(),
                 c.getHistory(), c.getImportantCharacters(), c.getNotes(),
                 sheet == null ? null : new NamedRefDto(sheet.getId().toString(), sheet.getName()),

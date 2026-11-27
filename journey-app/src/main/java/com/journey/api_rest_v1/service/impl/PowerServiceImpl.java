@@ -232,6 +232,10 @@ public class PowerServiceImpl implements PowerService {
             specification = specification.and(PowerSpecifications.withCategories(request.categories(), request.getMatchAll()));
         }
 
+        if (request.lvl() != null && request.lvl() >= 0) {
+            specification = specification.and(
+                    PowerSpecifications.withResourceFilter("lvl", request.getLvlOperator(), request.lvl()));
+        }
         if (request.tpCost() != null && request.tpCost() >= 0) {
             specification = specification.and(
                 PowerSpecifications.withResourceFilter("tpCost", request.getTpOperator(), request.tpCost()));

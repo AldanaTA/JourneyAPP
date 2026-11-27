@@ -26,6 +26,8 @@ export function PickerModal<T>({
   getId,
   renderRow,
   renderDetails,
+  renderFullDetails,
+  hideSearch = false,
   disabledReason,
   multiple = false,
   initialSelected = [],
@@ -45,6 +47,10 @@ export function PickerModal<T>({
   renderRow: (item: T) => ReactNode;
   /** Shown under a row when it is selected. */
   renderDetails?: (item: T) => ReactNode;
+  /** The full details of an entry (e.g. the compendium card); when given, tapping a card shows them. */
+  renderFullDetails?: (item: T, close: () => void) => ReactNode;
+  /** When the {@code filters} bring their own search box (the compendium filters), hide this one. */
+  hideSearch?: boolean;
   /** Why an item cannot be picked (shown instead of selecting it), or null. */
   disabledReason?: (item: T, selected: T[]) => string | null;
   multiple?: boolean;
@@ -62,6 +68,7 @@ export function PickerModal<T>({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<T[]>(initialSelected);
+  const [detailsItem, setDetailsItem] = useState<T | null>(null);
   const fetchPage = useEffectEvent((pageNumber: number, text: string) => load(pageNumber, PAGE_SIZE, text));
 
   useEffect(() => {
@@ -129,6 +136,7 @@ export function PickerModal<T>({
       }
     >
       <div className="space-y-3">
+        {!hideSearch && (
         <div className="relative">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           {loading && page === 0 && (
@@ -144,6 +152,7 @@ export function PickerModal<T>({
             className={cn(inputClass, "pl-9")}
           />
         </div>
+        )}
         {filters && <div className="flex flex-wrap items-center gap-2">{filters}</div>}
 
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
@@ -155,32 +164,45 @@ export function PickerModal<T>({
             const reason = isSelected ? null : (disabledReason?.(item, selected) ?? null);
             return (
               <li key={id}>
-                <button
-                  type="button"
-                  onClick={() => toggle(item)}
-                  disabled={reason !== null}
-                  aria-pressed={isSelected}
+                <div
                   className={cn(
-                    "flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition",
+                    "flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 transition",
                     isSelected ? "border-violet-400 bg-violet-50" : "border-slate-200 bg-white hover:border-slate-300",
-                    reason !== null && "cursor-not-allowed opacity-50",
+                    reason !== null && "opacity-50",
                   )}
                 >
-                  <span
+                  <button
+                    type="button"
+                    onClick={() => toggle(item)}
+                    disabled={reason !== null}
+                    aria-pressed={isSelected}
+                    aria-label={isSelected ? "Unselect" : "Select"}
                     className={cn(
-                      "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border",
-                      multiple ? "rounded-md" : "rounded-full",
-                      isSelected ? "border-violet-600 bg-violet-600 text-white" : "border-slate-300 bg-white",
+                      "-m-1 mt-0 flex shrink-0 items-center justify-center p-1 disabled:cursor-not-allowed",
                     )}
                   >
-                    {isSelected && <Check size={13} strokeWidth={3} />}
-                  </span>
-                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 items-center justify-center border",
+                        multiple ? "rounded-md" : "rounded-full",
+                        isSelected ? "border-violet-600 bg-violet-600 text-white" : "border-slate-300 bg-white",
+                      )}
+                    >
+                      {isSelected && <Check size={13} strokeWidth={3} />}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    // With full details, tapping the card shows them (the circle selects); otherwise it selects.
+                    onClick={() => (renderFullDetails ? setDetailsItem(item) : reason === null && toggle(item))}
+                    className="min-w-0 flex-1 text-left"
+                  >
                     {renderRow(item)}
                     {reason && <span className="mt-0.5 block text-xs text-amber-700">{reason}</span>}
                     {isSelected && renderDetails && <span className="mt-2 block">{renderDetails(item)}</span>}
-                  </span>
-                </button>
+                    {renderFullDetails && <span className="mt-1 block text-[11px] font-medium text-violet-700">Tap for full details</span>}
+                  </button>
+                </div>
               </li>
             );
           })}
@@ -192,6 +214,7 @@ export function PickerModal<T>({
           </div>
         )}
         {!loading && items.length === 0 && !error && <EmptyNote>Nothing matches.</EmptyNote>}
+        {detailsItem && renderFullDetails && renderFullDetails(detailsItem, () => setDetailsItem(null))}
         {!loading && page + 1 < totalPages && (
           <div className="flex justify-center">
             <SecondaryButton onClick={() => { setLoading(true); setPage(page + 1); }}>Load more</SecondaryButton>

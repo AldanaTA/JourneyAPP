@@ -21,6 +21,9 @@ interface DraftState {
   /** The version a save last failed at: autosave waits for another change before trying again. */
   failedVersion: number | null;
   lastSavedAt: number | null;
+  /** Guided creation: the editor walks through each part with explanations. */
+  guided: boolean;
+  setGuided: (guided: boolean) => void;
 
   /** Starts editing (or viewing) a character. {@code saved} is false for a new character. */
   open: (draft: Draft, readOnly: boolean, saved: boolean) => void;
@@ -44,6 +47,8 @@ export const useDraftStore = create<DraftState>((set, get) => ({
   saveErrorSeen: true,
   failedVersion: null,
   lastSavedAt: null,
+  guided: false,
+  setGuided: (guided) => set({ guided }),
 
   open: (draft, readOnly, saved) =>
     set({
@@ -55,6 +60,7 @@ export const useDraftStore = create<DraftState>((set, get) => ({
       saveError: null,
       failedVersion: null,
       lastSavedAt: null,
+      guided: false,
     }),
 
   close: () => set({ draft: null, version: 0, savedVersion: 0, saveError: null, failedVersion: null }),
@@ -84,7 +90,7 @@ export const useDraftStore = create<DraftState>((set, get) => ({
     try {
       let id = draft.id;
       if (!id) {
-        const created = await createCharacter(draft.name.trim() || "Unnamed character", draft.sourceIds);
+        const created = await createCharacter(draft.name.trim() || "Unnamed character", draft.sourceIds, draft.campaignId);
         id = created.id;
         // Keep the id even if the rest of the save fails, so the next save does not create another character.
         set((state) => ({ draft: state.draft ? { ...state.draft, id } : state.draft }));

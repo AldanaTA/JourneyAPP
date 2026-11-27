@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { filterItems } from "@/apis/itemApi";
 import type { Item, ItemType } from "@/models/Item";
-import { ITEM_TYPES, formatItemType } from "@/sections/compendium/components/items/itemFormatters";
+import { formatItemType } from "@/sections/compendium/components/items/itemFormatters";
 import { useSearchSourceIds } from "../referenceStore";
 import { inputClass } from "../ui";
-import { FilterSelect, PickerModal } from "./PickerModal";
+import { PickerModal } from "./PickerModal";
+import type { ItemFilterRequest } from "@/apis/itemApi";
+import { ItemFilter } from "@/sections/compendium/components/filters/ItemFilter";
+
+const NO_ITEM_FILTERS: ItemFilterRequest = {
+  itemTypes: [], rarities: [], magicOnly: false, attunementOnly: false, weaponTypes: [], damageTypes: [], page: 0, size: 20, name: null,
+};
+
+const ItemDetailsModal = lazy(() =>
+  import("@/sections/compendium/components/items/ItemDetailsModal").then((m) => ({ default: m.ItemDetailsModal })),
+);
 
 /**
  * Pick one compendium item, or name a custom one ("A sealed letter"). {@code types} preselects the item types
@@ -24,21 +34,16 @@ export default function ItemPicker({
   onClose: () => void;
 }) {
   const sourceIds = useSearchSourceIds();
-  const [type, setType] = useState<ItemType | "">(types?.length === 1 ? types[0] : "");
+  const [request, setRequest] = useState<ItemFilterRequest | null>(null);
   const [custom, setCustom] = useState("");
-  const typeFilter = type ? [type] : (types ?? []);
   return (
     <PickerModal<Item>
       title={title}
       searchPlaceholder="Search items"
+      hideSearch
       filters={
-        <>
-          <FilterSelect
-            label={types ? "Fitting types" : "Any type"}
-            options={(types ?? ITEM_TYPES).map((t) => ({ value: t, label: formatItemType(t) }))}
-            value={type}
-            onChange={setType}
-          />
+        <div className="w-full space-y-2">
+          <ItemFilter onApply={setRequest} initialFilters={request} />
           {allowCustom && (
             <form
               className="flex flex-1 gap-1.5"
@@ -62,17 +67,21 @@ export default function ItemPicker({
               </button>
             </form>
           )}
-        </>
+        </div>
       }
-      filterKey={`${typeFilter.join(",")}|${sourceIds.join(",")}`}
-      load={(page, size, search) =>
-        filterItems(
-          { itemTypes: typeFilter, rarities: [], magicOnly: false, attunementOnly: false, weaponTypes: [], damageTypes: [], page, size, name: search || null, sourceIds },
-          page,
-          size,
-        )
-      }
+      filterKey={`${JSON.stringify(request)}|${(types ?? []).join(",")}|${sourceIds.join(",")}`}
+      load={(page, size) => {
+        const base = request ?? NO_ITEM_FILTERS;
+        // Without a type filter, the place's own types (armor for the armor place, ...).
+        const itemTypes = base.itemTypes.length ? base.itemTypes : (types ?? []);
+        return filterItems({ ...base, itemTypes, sourceIds, page, size }, page, size);
+      }}
       getId={(i) => i.id}
+      renderFullDetails={(i, close) => (
+        <Suspense fallback={null}>
+          <ItemDetailsModal item={i} isOpen onClose={close} />
+        </Suspense>
+      )}
       renderRow={(i) => (
         <>
           <span className="flex items-baseline justify-between gap-2">

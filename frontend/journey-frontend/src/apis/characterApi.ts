@@ -45,8 +45,22 @@ export function deleteCharacter(id: string): Promise<void> {
 }
 
 /** Creates an empty draft; the editor follows up with {@link saveCharacter}. */
-export function createCharacter(name: string, sourceIds: string[]): Promise<CharacterDto> {
-  return request("/characters", { method: "POST", body: JSON.stringify({ name, source_ids: sourceIds }) });
+/** Creates an empty draft (inside a campaign when {@code campaignId} is given); the editor then saves it. */
+export function createCharacter(name: string, sourceIds: string[], campaignId?: string | null): Promise<CharacterDto> {
+  return request("/characters", {
+    method: "POST",
+    body: JSON.stringify({ name, source_ids: sourceIds, campaign_id: campaignId ?? undefined }),
+  });
+}
+
+/** What exporting the character to the player's own list would leave out. */
+export function checkExport(id: string): Promise<import("./campaignApi").ImportCheck> {
+  return request(`/characters/${encodeURIComponent(id)}/export-check`, { method: "POST" });
+}
+
+/** Copies the character to the player's own list, without content from sources they do not own. */
+export function exportCharacter(id: string): Promise<{ id: string; name: string }> {
+  return request(`/characters/${encodeURIComponent(id)}/export`, { method: "POST" });
 }
 
 /** Saves the whole character in one request (see SaveCharacterRequest on the API). */
@@ -99,6 +113,7 @@ export interface SaveCharacterBody {
   notes: string;
   character_sheet_id?: string;
   size?: string;
+  starting_exp: number;
   source_ids: string[];
   race_ids: string[];
   language_race_id: string | null;
@@ -175,4 +190,23 @@ export function finalizeCharacter(id: string): Promise<CharacterDto> {
 
 export function getItem(id: string): Promise<Item> {
   return request(`/items/${encodeURIComponent(id)}`);
+}
+
+export interface ExpAward {
+  id: string;
+  amount: number;
+  reason: string;
+  awardedByUserId: string | null;
+  awardedByName: string | null;
+  createdAt: string;
+}
+
+/** EXP the character has gained since creation (quests, training), oldest first. */
+export function listExpAwards(id: string): Promise<ExpAward[]> {
+  return request(`/characters/${encodeURIComponent(id)}/exp-awards`);
+}
+
+/** Gives the character EXP (a negative amount corrects a mistake); returns the character. */
+export function addExpAward(id: string, amount: number, reason: string): Promise<CharacterDto> {
+  return request(`/characters/${encodeURIComponent(id)}/exp-awards`, { method: "POST", body: JSON.stringify({ amount, reason }) });
 }

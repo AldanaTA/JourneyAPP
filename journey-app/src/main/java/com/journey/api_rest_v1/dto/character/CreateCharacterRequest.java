@@ -29,6 +29,8 @@ public record CreateCharacterRequest(
     String important_characters,
     String notes,
     /** Content sources (besides the core rules) to build the character from. */
-    List<String> source_ids
+    List<String> source_ids,
+    /** Create the character inside this campaign (the caller must be a member); its sources are the campaign's. */
+    String campaign_id
 ) {
 }

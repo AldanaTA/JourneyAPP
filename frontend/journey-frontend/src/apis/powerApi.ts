@@ -11,6 +11,9 @@ export interface PowerFilterRequest {
   size: number;
   tpCost: number | null;
   tpOperator: Operator;
+  /** The power's level (e.g. LVL 3 or below). */
+  lvl?: number | null;
+  lvlOperator?: Operator;
   hpCost: number | null;
   hpOperator: Operator;
   mpCost: number | null;

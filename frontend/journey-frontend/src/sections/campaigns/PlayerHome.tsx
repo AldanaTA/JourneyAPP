@@ -44,11 +44,11 @@ export default function PlayerHome() {
               <span className="block text-sm text-slate-500">Bring one of your characters in as a campaign version.</span>
             </span>
           </button>
-          <button type="button" onClick={() => navigate(`/characters/new/edit${returnParam(`/campaigns/${campaign.id}`)}`)} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-violet-300">
+          <button type="button" onClick={() => navigate(`/characters/new/edit?campaign=${campaign.id}&return=${encodeURIComponent(`/campaigns/${campaign.id}`)}`)} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-violet-300">
             <UserPlus className="text-violet-600" />
             <span>
               <span className="block font-semibold text-slate-900">Create character</span>
-              <span className="block text-sm text-slate-500">Make a new one, then import it here.</span>
+              <span className="block text-sm text-slate-500">Make a new one in this campaign, with its sheets and content.</span>
             </span>
           </button>
         </div>

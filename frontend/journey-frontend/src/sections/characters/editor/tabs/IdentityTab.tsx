@@ -9,6 +9,7 @@ import { draftTrait } from "../draft";
 import { useDraftStore } from "../draftStore";
 import { useBudget, useDraft, useReadOnly, useSheet, useUpdate } from "../hooks";
 import { MIXED_RACE_TRAIT_EXP, SIZE_NAMES, allowedSizes, creationProblems } from "../rules";
+import { TraitInfoButton } from "../TraitInfoButton";
 import { Panel, PrimaryButton, TextField } from "../ui";
 
 const SheetPicker = lazy(() => import("../pickers/SheetPicker"));
@@ -251,12 +252,13 @@ function RacialTraits() {
           const locked = readOnly || !mixed || ownedOtherwise || tooMuch;
           return (
             <li key={`${race.id}:${trait.id}`}>
-              <button
+              <div className="flex items-center gap-1">
+<button
                 type="button"
                 disabled={locked}
                 onClick={() => toggle(trait, race, on)}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left",
+                  "flex min-w-0 flex-1 w-full items-center gap-3 rounded-xl border px-3 py-2 text-left",
                   on ? "border-violet-300 bg-violet-50" : "border-slate-200 bg-white",
                   (tooMuch || ownedOtherwise) && "opacity-55",
                 )}
@@ -277,6 +279,8 @@ function RacialTraits() {
                   </span>
                 </span>
               </button>
+<TraitInfoButton trait={trait} />
+</div>
             </li>
           );
         })}

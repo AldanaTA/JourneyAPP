@@ -62,7 +62,10 @@ import com.journey.api_rest_v1.repository.RaceRepository;
 import com.journey.api_rest_v1.repository.SkillRepository;
 import com.journey.api_rest_v1.repository.TraitRepository;
 import com.journey.api_rest_v1.service.CharacterService;
+import com.journey.api_rest_v1.domain.users.User;
+import com.journey.api_rest_v1.repository.UserRepository;
 import com.journey.api_rest_v1.service.CurrentUser;
+import com.journey.api_rest_v1.service.campaign.CampaignService;
 
 /**
  * Default {@link CharacterService}. Characters are per-user and change often, so they are not cached; only the
@@ -90,6 +93,8 @@ public class CharacterServiceImpl implements CharacterService {
     private final CharacterAssembler assembler;
     private final CurrentUser currentUser;
     private final CharacterSaveService saveService;
+    private final CampaignService campaignService;
+    private final UserRepository userRepository;
 
     /** Wires the repositories and helpers. */
     public CharacterServiceImpl(PlayerCharacterRepository characterRepository,
@@ -107,7 +112,11 @@ public class CharacterServiceImpl implements CharacterService {
             CharacterAccess access,
             CharacterAssembler assembler,
             CurrentUser currentUser,
-            CharacterSaveService saveService) {
+            CharacterSaveService saveService,
+            CampaignService campaignService,
+            UserRepository userRepository) {
+        this.userRepository = userRepository;
+        this.campaignService = campaignService;
         this.characterRepository = characterRepository;
         this.sheetRepository = sheetRepository;
         this.skillRepository = skillRepository;
@@ -200,9 +209,17 @@ public class CharacterServiceImpl implements CharacterService {
         CharacterInventory inventory = new CharacterInventory();
         inventory.setCharacterId(id);
         inventoryRepository.save(inventory);
-        if (request.source_ids() != null) saveService.setSources(id, request.source_ids());
+        List<String> sources = request.source_ids() == null ? new ArrayList<>() : new ArrayList<>(request.source_ids());
+        if (request.campaign_id() != null && !request.campaign_id().isBlank()) {
+            // Made from a campaign: a campaign character from the start, using the campaign's own content too.
+            UUID campaignId = CharacterAccess.parseUuid(request.campaign_id(), "campaign");
+            campaignService.requireMember(campaignId);
+            characterRepository.setCampaign(id, campaignId);
+            if (!sources.contains(campaignId.toString())) sources.add(campaignId.toString());
+        }
+        if (!sources.isEmpty()) saveService.setSources(id, sources);
         access.requireWithinBudget(id);
-        return assembler.toDto(c);
+        return assembler.toDto(characterRepository.findById(id).orElseThrow());
     }
 
     @Override
@@ -408,9 +425,14 @@ public class CharacterServiceImpl implements CharacterService {
     @Transactional(readOnly = true)
     public List<CharacterExpAwardDto> listExpAwards(String id) {
         PlayerCharacter c = access.loadOwned(id);
-        return expAwardRepository.findByCharacterIdOrderByCreatedAtAsc(c.getId()).stream()
+        List<CharacterExpAward> awards = expAwardRepository.findByCharacterIdOrderByCreatedAtAsc(c.getId());
+        Map<UUID, String> names = userRepository.findAllById(awards.stream().map(CharacterExpAward::getAwardedByUserId)
+                .filter(Objects::nonNull).collect(Collectors.toSet())).stream()
+                .collect(Collectors.toMap(User::getId, User::getDisplayName));
+        return awards.stream()
                 .map(a -> new CharacterExpAwardDto(a.getId().toString(), a.getAmount(), a.getReason(),
                         a.getAwardedByUserId() == null ? null : a.getAwardedByUserId().toString(),
+                        a.getAwardedByUserId() == null ? null : names.get(a.getAwardedByUserId()),
                         String.valueOf(a.getCreatedAt())))
                 .toList();
     }

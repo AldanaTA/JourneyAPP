@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { ChevronDown, ChevronsDown, ChevronsUp, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { NumberInput } from "@/components/NumberInput";
 import { cn } from "@/lib/utils";
 import { Modal, PrimaryButton, SecondaryButton, inputClass } from "./ui";
 
@@ -192,6 +193,7 @@ export function EditAbilityModal<F extends object>({
   values,
   compendium,
   edited,
+  progress,
   onSave,
   onClose,
 }: {
@@ -201,10 +203,14 @@ export function EditAbilityModal<F extends object>({
   values: F;
   compendium: F | null;
   edited: Set<string>;
-  onSave: (notes: string, values: F, reset: Set<string>) => void;
+  /** The character's level in it and the EXP actually spent on it (both editable, e.g. a power a trait gave free). */
+  progress: { lvl: number; expSpent: number; maxLvl?: number };
+  onSave: (notes: string, values: F, reset: Set<string>, progress: { lvl: number; expSpent: number }) => void;
   onClose: () => void;
 }) {
   const [noteText, setNoteText] = useState(notes);
+  const [lvl, setLvl] = useState(progress.lvl);
+  const [expSpent, setExpSpent] = useState(progress.expSpent);
   const [draft, setDraft] = useState<F>(values);
   const [reset, setReset] = useState<Set<string>>(new Set());
   const [customizing, setCustomizing] = useState(false);
@@ -229,7 +235,7 @@ export function EditAbilityModal<F extends object>({
           <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
           <PrimaryButton
             onClick={() => {
-              onSave(noteText, draft, reset);
+              onSave(noteText, draft, reset, { lvl, expSpent });
               onClose();
             }}
           >
@@ -239,6 +245,22 @@ export function EditAbilityModal<F extends object>({
       }
     >
       <div className="space-y-4">
+        <div className="rounded-xl border border-slate-200 p-3">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="space-y-1">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">LVL</span>
+              <NumberInput min={1} max={progress.maxLvl ?? 999} value={lvl} onChange={(n) => setLvl(n ?? 1)} className={inputClass} />
+            </label>
+            <label className="space-y-1">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">EXP spent</span>
+              <NumberInput min={0} value={expSpent} onChange={(n) => setExpSpent(n ?? 0)} className={inputClass} />
+            </label>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            What this character actually paid. Change it when a trait or the storyteller makes it cheaper or free (e.g. a power
+            from Destructive Spells), or to fix a mistake. Levelling up and down here does not add or refund EXP.
+          </p>
+        </div>
         <div className="space-y-1">
           <label htmlFor="ability-notes" className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
             Notes
@@ -297,12 +319,12 @@ export function EditAbilityModal<F extends object>({
                     {field.kind === "longtext" ? (
                       <textarea id={id} rows={3} value={String(value ?? "")} onChange={(e) => setField(field.key, e.target.value)} className={cn(inputClass, "resize-y")} />
                     ) : field.kind === "number" ? (
-                      <input
+                      <NumberInput
                         id={id}
-                        type="number"
                         min={0}
-                        value={value === null || value === undefined ? "" : String(value)}
-                        onChange={(e) => setField(field.key, e.target.value === "" ? null : Math.max(0, Number.parseInt(e.target.value, 10) || 0))}
+                        allowEmpty
+                        value={typeof value === "number" ? value : null}
+                        onChange={(n) => setField(field.key, n)}
                         className={inputClass}
                       />
                     ) : field.kind === "boolean" ? (

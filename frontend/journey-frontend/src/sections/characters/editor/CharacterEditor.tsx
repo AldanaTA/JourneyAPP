@@ -1,8 +1,12 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
+import { Search as SearchIcon, Upload } from "lucide-react";
+import { useAuthStore } from "@/auth/authStore";
+
 import { Backpack, Briefcase, CircleAlert, Dumbbell, Pencil, Save, Sparkles, Target, UserRound, Wand2, X } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { getCampaign } from "@/apis/campaignApi";
 import { getCharacter, getCharacterInventory, getJob, getRace } from "@/apis/characterApi";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
@@ -14,7 +18,15 @@ import type { PlayActions } from "./playContext";
 import { PlayContext } from "./playContext";
 import { useReturnTo } from "./returnTo";
 import SourcesPage from "./SourcesPage";
+import type { GuideTab } from "./GuidePanel";
 import { Modal, PrimaryButton, SecondaryButton } from "./ui";
+
+// Only downloaded when used: the guided-creation parts and the export dialog.
+const ModeChoice = lazy(() => import("./ModeChoice"));
+const GuidePanel = lazy(() => import("./GuidePanel").then((m) => ({ default: m.GuidePanel })));
+const LookupModal = lazy(() => import("./LookupModal"));
+const ExpModal = lazy(() => import("./ExpModal"));
+const ExportModal = lazy(() => import("./ExportModal").then((m) => ({ default: m.ExportModal })));
 
 // Each tab is downloaded the first time it is opened.
 const IdentityTab = lazy(() => import("./tabs/IdentityTab"));
@@ -71,6 +83,37 @@ export default function CharacterEditor({
   const close = useDraftStore((state) => state.close);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("identity");
+  // Creating: Guided or Unguided is chosen first; guided creation then walks through the steps.
+  const [creationMode, setCreationMode] = useState<"guided" | "unguided" | null>(null);
+  const guided = useDraftStore((state) => state.guided);
+  const setGuided = useDraftStore((state) => state.setGuided);
+  const [step, setStep] = useState(0);
+  const mainRef = useRef<HTMLElement>(null);
+
+  // A new character made from a campaign (?campaign=<id>) belongs to it and uses its sources.
+  const [params] = useSearchParams();
+  const newInCampaign = isNew ? params.get("campaign") : null;
+  useEffect(() => {
+    if (!newInCampaign || creationMode === null || useDraftStore.getState().draft) return;
+    let cancelled = false;
+    getCampaign(newInCampaign)
+      .then((campaign) => {
+        if (cancelled || useDraftStore.getState().draft) return;
+        open(newDraft([campaign.id, ...campaign.allowedSources.map((s) => s.id)], campaign.id), false, false);
+        setGuided(creationMode === "guided");
+      })
+      .catch((error: unknown) => !cancelled && setLoadError(error instanceof Error ? error.message : "Could not load the campaign"));
+    return () => {
+      cancelled = true;
+    };
+  }, [newInCampaign, open, creationMode, setGuided]);
+
+  // A campaign character can also use its campaign's own character sheets.
+  const draftCampaignId = draft?.campaignId ?? null;
+  const loadCampaignSheets = useReferenceStore((state) => state.loadCampaignSheets);
+  useEffect(() => {
+    if (draftCampaignId) void loadCampaignSheets(draftCampaignId);
+  }, [draftCampaignId, loadCampaignSheets]);
 
   useEffect(() => {
     void loadReference();
@@ -144,13 +187,34 @@ export default function CharacterEditor({
       </EditorFrame>
     );
   }
+  if (isNew && !draft && creationMode === null) {
+    return (
+      <EditorFrame>
+        <Suspense fallback={null}>
+          <ModeChoice onPick={(g) => setCreationMode(g ? "guided" : "unguided")} onCancel={() => navigate(back.to)} />
+        </Suspense>
+      </EditorFrame>
+    );
+  }
+  if (isNew && !draft && newInCampaign) {
+    return (
+      <EditorFrame>
+        <div className="m-auto flex items-center gap-2 text-slate-600">
+          <Spinner className="h-5 w-5" /> Loading…
+        </div>
+      </EditorFrame>
+    );
+  }
   if (isNew && !draft) {
     return (
       <EditorFrame>
         <SourcesPage
           initial={[]}
           onCancel={() => navigate(back.to)}
-          onContinue={(sourceIds) => open(newDraft(sourceIds), false, false)}
+          onContinue={(sourceIds) => {
+            open(newDraft(sourceIds), false, false);
+            setGuided(creationMode === "guided");
+          }}
         />
       </EditorFrame>
     );
@@ -170,7 +234,7 @@ export default function CharacterEditor({
     <PlayContext.Provider value={play}>
     <EditorFrame>
       <EditorHeader readOnly={readOnly} showJobPoints={tab === "job"} quickSave={play !== null} />
-      <main className="flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-4">
+      <main ref={mainRef} className="flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-4">
         <div className="mx-auto max-w-3xl">
           <Suspense
             fallback={
@@ -179,6 +243,16 @@ export default function CharacterEditor({
               </div>
             }
           >
+            {guided && !readOnly && (
+              <GuidePanel
+                step={step}
+                onStep={(next: number, nextTab: GuideTab) => {
+                  setStep(next);
+                  setTab(nextTab);
+                  mainRef.current?.scrollTo({ top: 0 });
+                }}
+              />
+            )}
             <ActiveTab />
           </Suspense>
         </div>
@@ -245,6 +319,14 @@ function EditorHeader({ readOnly, showJobPoints, quickSave }: { readOnly: boolea
   const dirty = useIsDirty();
   const b = useBudget();
   const [confirmClose, setConfirmClose] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [expOpen, setExpOpen] = useState(false);
+  // A campaign character's own player can copy it to their characters.
+  const campaignId = useDraftStore((state) => state.draft?.campaignId ?? null);
+  const ownerId = useDraftStore((state) => state.draft?.userId ?? null);
+  const me = useAuthStore((state) => state.user?.id);
+  const canExport = Boolean(id && campaignId && ownerId && ownerId === me);
 
   useEffect(() => {
     if (readOnly) return;
@@ -306,12 +388,35 @@ function EditorHeader({ readOnly, showJobPoints, quickSave }: { readOnly: boolea
             {b.jobPointsRemaining} JP
           </span>
         )}
-        <span
-          className={cn("rounded-lg px-2 py-1 text-xs font-semibold tabular-nums", b.expRemaining < 0 ? "bg-red-500/80" : "bg-violet-500/90")}
+        <button
+          type="button"
+          onClick={() => setExpOpen(true)}
+          aria-label="EXP: add EXP or change starting EXP"
+          className={cn("rounded-lg px-2 py-1 text-xs font-semibold tabular-nums hover:ring-2 hover:ring-white/40", b.expRemaining < 0 ? "bg-red-500/80" : "bg-violet-500/90")}
           title={`${b.expSpent} of ${b.totalExp} EXP spent`}
         >
           {b.expRemaining} EXP left
-        </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setLookingUp(true)}
+          aria-label="Look up in the compendium"
+          title="Look up (creatures, traits, rules…)"
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20"
+        >
+          <SearchIcon size={16} />
+        </button>
+        {canExport && (
+          <button
+            type="button"
+            onClick={() => setExporting(true)}
+            aria-label="Export to my characters"
+            title="Export to my characters"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20"
+          >
+            <Upload size={16} />
+          </button>
+        )}
         {readOnly ? (
           id && (
             <button
@@ -350,6 +455,21 @@ function EditorHeader({ readOnly, showJobPoints, quickSave }: { readOnly: boolea
         </Modal>
       )}
 
+      {expOpen && (
+        <Suspense fallback={null}>
+          <ExpModal onClose={() => setExpOpen(false)} />
+        </Suspense>
+      )}
+      {lookingUp && (
+        <Suspense fallback={null}>
+          <LookupModal onClose={() => setLookingUp(false)} />
+        </Suspense>
+      )}
+      {exporting && id && (
+        <Suspense fallback={null}>
+          <ExportModal characterId={id} onClose={() => setExporting(false)} />
+        </Suspense>
+      )}
       {confirmClose && (
         <Modal
           title="Unsaved changes"

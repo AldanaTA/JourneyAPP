@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import type { ReactNode } from "react";
 import { Hand, Package, Pencil, Plus, Shield, ShoppingBag, Sparkles, Trash2 } from "lucide-react";
+import { NumberInput } from "@/components/NumberInput";
 import { cn } from "@/lib/utils";
 import type { InventoryLocation } from "@/models/Character";
 import type { ItemType } from "@/models/Item";
@@ -74,14 +75,12 @@ export default function InventoryTab() {
               <span className={cn("flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-black uppercase shadow-inner", coin.color)}>
                 {coin.short}
               </span>
-              <input
-                type="number"
+              <NumberInput
                 min={0}
-                inputMode="numeric"
                 disabled={readOnly}
                 aria-label={coin.label}
                 value={inv[coin.key]}
-                onChange={(event) => changeInv((i) => void (i[coin.key] = Math.max(0, Number.parseInt(event.target.value, 10) || 0)))}
+                onChange={(n) => changeInv((i) => void (i[coin.key] = n ?? 0))}
                 className="w-full rounded-lg border border-slate-200 bg-white px-1 py-1.5 text-center text-base font-semibold tabular-nums outline-none focus:border-violet-400 disabled:bg-slate-50 sm:text-sm"
               />
             </label>
