@@ -1,0 +1,32 @@
+include:
+  - path: ./agent-services/docker-compose.yml
+    env_file:
+      - ./agent-services/.env
+  - path: ./backend/docker-compose.yml
+    env_file:
+      - ./backend/.env
+  - path: ./journey-app/docker-compose.yml
+    env_file:
+      - ./journey-app/.env
+services:
+  caddy:
+    image: caddy:2.8.5
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "${CADDY_PORT}:80"
+      - "${CADDY_TLS_PORT}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    depends_on:
+      - api-layer
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    env_file:
+      - ./.env
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - caddy
+    restart: unless-stopped  

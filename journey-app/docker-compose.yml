@@ -26,8 +26,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      mailpit:
-        condition: service_started
     ports:
       - "8080:8080"
     healthcheck:
@@ -51,24 +49,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-
-  # Test mail server: catches every email the API sends (nothing reaches real inboxes).
-  # Read them at http://localhost:8025. Remove this service and set MAIL_* in .env to send real email.
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: journey-mailpit
-    restart: unless-stopped
-    ports:
-      - "${MAILPIT_UI_PORT:-8025}:8025"
-    environment:
-      MP_MAX_MESSAGES: 500
-      MP_SMTP_AUTH_ACCEPT_ANY: "true"
-      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
-    healthcheck:
-      test: ["CMD", "/mailpit", "readyz"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
 
 volumes:
   redis-data:
