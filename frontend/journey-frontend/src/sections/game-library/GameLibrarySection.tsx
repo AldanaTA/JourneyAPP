@@ -1,6 +1,3 @@
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { RuleBookShelf } from "./rules/RuleBookShelf"
 
 function GameLibrarySection() {
@@ -13,23 +10,7 @@ function GameLibrarySection() {
           </p>
           <h2 className="m-0 text-3xl font-semibold tracking-tight text-slate-900">Library</h2>
         </div>
-        <Button type="button" className="rounded-xl bg-slate-900 text-white hover:bg-slate-800">
-          + New
-        </Button>
       </header>
-
-      <Card className="border-violet-200/70 bg-gradient-to-br from-violet-100/80 to-amber-50 shadow-sm">
-        <CardContent className="gap-3 p-4">
-          <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100">
-            Active campaign
-          </Badge>
-          <CardTitle className="mt-1 text-xl">Moonfall: The Shattered Crown</CardTitle>
-          <p className="text-sm leading-6 text-slate-600">
-            4 sessions logged • 1 party roster • 3 unresolved mysteries
-          </p>
-        </CardContent>
-      </Card>
-
       <RuleBookShelf />
     </div>
   )
