@@ -1,32 +1,46 @@
+# Starts the whole app. Every part still has its own docker-compose.yml, so it can also be run alone from
+# its folder (with that folder's .env). Here, every ${VAR} comes from this folder's .env (see example.env).
+#
+#   docker compose up -d --build              everything
+#   docker compose up -d --build frontend     one part (plus what it depends on)
 include:
-  - path: ./agent-services/docker-compose.yml
-    env_file:
-      - ./agent-services/.env
   - path: ./backend/docker-compose.yml
-    env_file:
-      - ./backend/.env
+    env_file: ./.env
   - path: ./journey-app/docker-compose.yml
-    env_file:
-      - ./journey-app/.env
+    env_file: ./.env
+  - path: ./agent-services/docker-compose.yml
+    env_file: ./.env
+  - path: ./frontend/journey-frontend/docker-compose.yml
+    env_file: ./.env
+
 services:
+  # One entry point: /api/* goes to the API, everything else to the frontend.
   caddy:
-    image: caddy:2.8.5
+    image: caddy:2-alpine
     container_name: caddy
     restart: unless-stopped
+    # Only needed to reach the site without the tunnel (e.g. testing on the LAN). The tunnel reaches
+    # caddy:80 inside Docker, so this can be removed in production.
     ports:
-      - "${CADDY_PORT}:80"
-      - "${CADDY_TLS_PORT}:443"
+      - "${CADDY_PORT:-8000}:80"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
     depends_on:
       - api-layer
+      - frontend
+
+  # Cloudflare Tunnel: an outbound connection to Cloudflare, so no ports are opened on the router.
+  # In the Cloudflare dashboard, point the tunnel's public hostname at http://caddy:80.
   cloudflared:
     image: cloudflare/cloudflared:latest
-    command: tunnel run
-    env_file:
-      - ./.env
+    container_name: cloudflared
+    command: tunnel --no-autoupdate run
+    restart: unless-stopped
     environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Set TUNNEL_TOKEN in .env (Cloudflare Zero Trust > Networks > Tunnels)}
     depends_on:
       - caddy
-    restart: unless-stopped  
+
+volumes:
+  caddy-data:

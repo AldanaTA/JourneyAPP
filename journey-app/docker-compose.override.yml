@@ -1,5 +1,7 @@
- # Test mail server: catches every email the API sends (nothing reaches real inboxes).
-  # Read them at http://localhost:8025. Remove this service and set MAIL_* in .env to send real email.
+services:
+  # Test mail server: catches every email the API sends (nothing reaches real inboxes).
+  # Read them at http://localhost:8025. Only used when this folder is run on its own; the root compose
+  # does not load it, so production sends through the MAIL_* server in the root .env.
   mailpit:
     image: axllent/mailpit:latest
     container_name: journey-mailpit

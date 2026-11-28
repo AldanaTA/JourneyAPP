@@ -5,8 +5,10 @@ services:
       dockerfile: Dockerfile
     container_name: journey-api
     restart: unless-stopped
+    # This folder's .env when run on its own; optional, since the root compose passes everything below.
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DB_URL: ${DB_URL:-jdbc:postgresql://localhost:1090/journey}
       DB_USERNAME: ${DB_USERNAME:-postgres}
@@ -20,6 +22,16 @@ services:
       MAIL_PORT: ${MAIL_PORT:-1025}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
       MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Journey <no-reply@localhost>}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5173}
+      JWT_SECRET: ${JWT_SECRET:-}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      # Read the client IP from X-Forwarded-For when the request comes through a proxy on a private
+      # address (Caddy), so rate limits are per visitor instead of one shared limit for everyone.
+      SERVER_FORWARD_HEADERS_STRATEGY: ${SERVER_FORWARD_HEADERS_STRATEGY:-native}
     volumes:
       # Images written by the rules importer (agent-services mounts the same folder read-write).
       - ${ASSET_STORAGE_HOST_DIR:-../data/assets}:/data/assets:ro

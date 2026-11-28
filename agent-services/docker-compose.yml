@@ -10,12 +10,18 @@ services:
       - ${ASSET_STORAGE_HOST_DIR:-../data/assets}:/data/assets
     container_name: journey-agents
     restart: unless-stopped
+    # This folder's .env when run on its own; optional, since the root compose passes everything below.
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       ASSET_STORAGE_DIR: /data/assets
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DATABASE_URL: ${DATABASE_URL:-}
+      JWT_SECRET: ${JWT_SECRET:-}
+      MAX_WORKERS: ${MAX_WORKERS:-}
     ports:
-      - "${AGENT_PORT}:8800"
+      - "${AGENT_PORT:-8800}:8800"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8800/health || exit 1"]
       interval: 10s

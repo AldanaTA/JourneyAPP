@@ -1,0 +1,13 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+        NODE_MAX_OLD_SPACE: ${FRONTEND_BUILD_MEMORY_MB:-1024}
+    container_name: journey-frontend
+    restart: unless-stopped
+    # Only static files: on its own (without Caddy) the page loads but API calls have nowhere to go.
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
